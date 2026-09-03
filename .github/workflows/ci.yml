@@ -58,5 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Scan repository history for secrets
         run: docker compose --profile tools run --rm gitleaks
