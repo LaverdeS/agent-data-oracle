@@ -11,16 +11,25 @@ _EVENT_FIELDS = (
     "response_status",
     "target_revision",
 )
+_SAFE_MESSAGES = frozenset(
+    {
+        "database_check_completed",
+        "database_check_failed",
+        "migration_completed",
+        "request_completed",
+    }
+)
 
 
 class JsonFormatter(logging.Formatter):
     """Format application logs as one redacted JSON object per line."""
 
     def format(self, record: logging.LogRecord) -> str:
+        message = record.getMessage()
         event: dict[str, Any] = {
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": message if message in _SAFE_MESSAGES else "<redacted>",
         }
         event.update(
             {
@@ -30,7 +39,10 @@ class JsonFormatter(logging.Formatter):
             }
         )
         if record.exc_info is not None:
-            event["exception"] = self.formatException(record.exc_info)
+            exception_type = record.exc_info[0]
+            event["exception_type"] = (
+                exception_type.__name__ if exception_type is not None else "Exception"
+            )
         return json.dumps(event, separators=(",", ":"), sort_keys=True)
 
 

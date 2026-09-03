@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import sys
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -10,10 +11,10 @@ from agent_data_oracle.web import create_app
 
 
 @pytest.mark.asyncio
-async def test_live_reports_process_liveness_without_database_access() -> None:
-    app = create_app(
-        database_url="postgresql+psycopg://unavailable:unavailable@127.0.0.1:1/unavailable"
-    )
+async def test_live_reports_process_liveness_without_database_access(
+    unavailable_database_url: str,
+) -> None:
+    app = create_app(database_url=unavailable_database_url)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -25,10 +26,10 @@ async def test_live_reports_process_liveness_without_database_access() -> None:
 
 
 @pytest.mark.asyncio
-async def test_requests_log_json_with_generated_correlation_ids() -> None:
-    app = create_app(
-        database_url="postgresql+psycopg://unavailable:unavailable@127.0.0.1:1/unavailable"
-    )
+async def test_requests_log_json_with_generated_correlation_ids(
+    unavailable_database_url: str,
+) -> None:
+    app = create_app(database_url=unavailable_database_url)
     output = io.StringIO()
     handler = logging.StreamHandler(output)
     handler.setFormatter(JsonFormatter())
@@ -42,7 +43,7 @@ async def test_requests_log_json_with_generated_correlation_ids() -> None:
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
             response = await client.post(
-                "/missing?identifier=query-secret",
+                "/path-secret?identifier=query-secret",
                 content="body-secret",
                 headers={"X-Correlation-ID": "caller-controlled"},
             )
@@ -58,20 +59,58 @@ async def test_requests_log_json_with_generated_correlation_ids() -> None:
         "logger": "agent_data_oracle.http",
         "message": "request_completed",
         "request_method": "POST",
-        "request_path": "/missing",
+        "request_path": "<unmatched>",
         "response_status": 404,
     }
     assert len(correlation_id) == 36
     assert correlation_id != "caller-controlled"
+    assert "path-secret" not in output.getvalue()
     assert "query-secret" not in output.getvalue()
     assert "body-secret" not in output.getvalue()
 
 
-@pytest.mark.asyncio
-async def test_ready_reports_unavailable_when_postgresql_cannot_be_reached() -> None:
-    app = create_app(
-        database_url="postgresql+psycopg://unavailable:unavailable@127.0.0.1:1/unavailable"
+def test_json_logs_redact_exception_messages() -> None:
+    try:
+        raise RuntimeError("submitted-secret")
+    except RuntimeError:
+        record = logging.LogRecord(
+            name="agent_data_oracle.test",
+            level=logging.ERROR,
+            pathname=__file__,
+            lineno=1,
+            msg="request_failed",
+            args=(),
+            exc_info=sys.exc_info(),
+        )
+
+    output = JsonFormatter().format(record)
+
+    assert json.loads(output)["exception_type"] == "RuntimeError"
+    assert "submitted-secret" not in output
+
+
+def test_json_logs_redact_arbitrary_messages() -> None:
+    record = logging.LogRecord(
+        name="external.library",
+        level=logging.ERROR,
+        pathname=__file__,
+        lineno=1,
+        msg="failure included submitted-secret",
+        args=(),
+        exc_info=None,
     )
+
+    output = JsonFormatter().format(record)
+
+    assert json.loads(output)["message"] == "<redacted>"
+    assert "submitted-secret" not in output
+
+
+@pytest.mark.asyncio
+async def test_ready_reports_unavailable_when_postgresql_cannot_be_reached(
+    unavailable_database_url: str,
+) -> None:
+    app = create_app(database_url=unavailable_database_url)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

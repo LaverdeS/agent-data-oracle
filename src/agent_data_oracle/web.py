@@ -18,6 +18,12 @@ request_logger = logging.getLogger("agent_data_oracle.http")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 
+def _route_template(request: Request) -> str:
+    route = request.scope.get("route")
+    path = getattr(route, "path", None)
+    return path if isinstance(path, str) else "<unmatched>"
+
+
 def create_app(*, database_url: str | None = None) -> FastAPI:
     database = Database(database_url or database_url_from_environment())
 
@@ -64,7 +70,7 @@ def create_app(*, database_url: str | None = None) -> FastAPI:
                 extra=request_log_fields(
                     correlation_id=correlation_id,
                     method=request.method,
-                    path=request.url.path,
+                    path=_route_template(request),
                     status=status,
                 ),
             )

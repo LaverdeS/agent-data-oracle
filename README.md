@@ -55,6 +55,7 @@ uv run ruff check src tests migrations
 uv run mypy src
 uv run pytest
 docker build --tag agent-data-oracle:local .
+docker compose --profile tools run --rm gitleaks
 ```
 
 The integration suite uses `TEST_DATABASE_URL` when set and otherwise targets

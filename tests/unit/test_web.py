@@ -5,10 +5,10 @@ from agent_data_oracle.web import create_app
 
 
 @pytest.mark.asyncio
-async def test_root_renders_the_product_boundary() -> None:
-    app = create_app(
-        database_url="postgresql+psycopg://unavailable:unavailable@127.0.0.1:1/unavailable"
-    )
+async def test_root_renders_the_product_boundary(
+    unavailable_database_url: str,
+) -> None:
+    app = create_app(database_url=unavailable_database_url)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
