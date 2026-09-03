@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6-bookworm
+        env:
+          POSTGRES_DB: agent_data_oracle_test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d agent_data_oracle_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/agent_data_oracle_test
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/agent_data_oracle_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.4"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.7.15"
+          enable-cache: true
+      - name: Install locked dependencies
+        run: uv sync --locked
+      - name: Check formatting
+        run: uv run ruff format --check src tests migrations
+      - name: Lint
+        run: uv run ruff check src tests migrations
+      - name: Type check
+        run: uv run mypy src
+      - name: Unit tests
+        run: uv run pytest tests/unit
+      - name: Migration tests
+        run: uv run pytest tests/integration/test_migrations.py
+      - name: Real-PostgreSQL integration tests
+        run: uv run pytest tests/integration --ignore=tests/integration/test_migrations.py
+      - name: Build standard container
+        run: docker build --tag agent-data-oracle:${{ github.sha }} .
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
