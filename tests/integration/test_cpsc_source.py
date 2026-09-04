@@ -1,8 +1,10 @@
 import json
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -73,17 +75,22 @@ async def test_fixture_import_creates_an_inspectable_completed_revision(
     assert imported.returncode == 0, imported.stderr
     assert output_document(imported)["record_count"] == 1
     assert status.returncode == 0, status.stderr
-    assert output_document(status) == {
-        "current_revision": {
-            "completed_at": "2026-08-01T12:00:00+00:00",
-            "record_count": 1,
-            "revision_id": output_document(imported)["revision_id"],
-        },
-        "last_run": {
-            "observed_at": "2026-08-01T12:00:00+00:00",
-            "record_count": 1,
-            "state": "completed",
-        },
+    status_document = output_document(status)
+    assert status_document["current_revision"]["record_count"] == 1
+    assert (
+        status_document["current_revision"]["revision_id"]
+        == (output_document(imported)["revision_id"])
+    )
+    assert (
+        datetime.fromisoformat(
+            status_document["current_revision"]["completed_at"]
+        ).tzinfo
+        is UTC
+    )
+    assert status_document["last_run"] == {
+        "observed_at": "2026-08-01T12:00:00+00:00",
+        "record_count": 1,
+        "state": "completed",
     }
     assert "HARPPA" not in status.stdout
 
@@ -141,7 +148,7 @@ async def test_equivalent_json_reuses_version_and_appends_observation(
         "--fixture",
         str(reformatted_fixture),
         "--observed-at",
-        "2026-08-02T12:00:00+00:00",
+        "2026-07-01T12:00:00Z",
         "--expected-record-count",
         "1",
     )
@@ -172,6 +179,11 @@ async def test_equivalent_json_reuses_version_and_appends_observation(
 
     assert counts == (1, 2, 2, 2)
     assert str(current_revision_id) == output_document(second)["revision_id"]
+
+    status = run_command("job", "cpsc-status", "--database-url", postgres_url)
+    assert output_document(status)["last_run"]["observed_at"] == (
+        "2026-07-01T12:00:00+00:00"
+    )
 
 
 @pytest.mark.asyncio
@@ -308,3 +320,218 @@ async def test_record_versions_are_immutable(
             await connection.execute(
                 text("UPDATE cpsc_recall_versions SET recall_number = 'changed'")
             )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_current_projection_cannot_mix_completed_revisions(
+    postgres_url: str, source_database: AsyncEngine
+) -> None:
+    first = run_command(
+        "job",
+        "cpsc-import-fixture",
+        "--database-url",
+        postgres_url,
+        "--fixture",
+        str(FIXTURE),
+        "--observed-at",
+        "2026-08-01T12:00:00Z",
+        "--expected-record-count",
+        "1",
+    )
+    second = run_command(
+        "job",
+        "cpsc-import-fixture",
+        "--database-url",
+        postgres_url,
+        "--fixture",
+        str(FIXTURE),
+        "--observed-at",
+        "2026-08-02T12:00:00Z",
+        "--expected-record-count",
+        "1",
+    )
+    assert first.returncode == 0, first.stderr
+    assert second.returncode == 0, second.stderr
+
+    with pytest.raises(DBAPIError):
+        async with source_database.begin() as connection:
+            await connection.execute(
+                text("UPDATE cpsc_current_records SET revision_id = :revision_id"),
+                {"revision_id": output_document(first)["revision_id"]},
+            )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_pending_and_late_source_rows_never_enter_current_projection(
+    postgres_url: str, source_database: AsyncEngine
+) -> None:
+    imported = run_command(
+        "job",
+        "cpsc-import-fixture",
+        "--database-url",
+        postgres_url,
+        "--fixture",
+        str(FIXTURE),
+        "--observed-at",
+        "2026-08-01T12:00:00Z",
+        "--expected-record-count",
+        "1",
+    )
+    assert imported.returncode == 0, imported.stderr
+
+    pending_run_id = uuid4()
+    pending_revision_id = uuid4()
+    async with source_database.begin() as connection:
+        await connection.execute(
+            text(
+                "INSERT INTO cpsc_ingestion_runs "
+                "(run_id, source_url, observed_at, raw_response, "
+                "raw_response_sha256, state, created_at) VALUES "
+                "(:run_id, 'recorded-test', CURRENT_TIMESTAMP, "
+                ":raw_response, :raw_hash, 'pending', CURRENT_TIMESTAMP)"
+            ),
+            {
+                "raw_hash": "0" * 64,
+                "raw_response": b"[]",
+                "run_id": pending_run_id,
+            },
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO cpsc_source_revisions "
+                "(revision_id, run_id, state, completeness, created_at) VALUES "
+                "(:revision_id, :run_id, 'pending', 'unknown', CURRENT_TIMESTAMP)"
+            ),
+            {"revision_id": pending_revision_id, "run_id": pending_run_id},
+        )
+
+    with pytest.raises(DBAPIError):
+        async with source_database.begin() as connection:
+            await connection.execute(
+                text(
+                    "UPDATE cpsc_current_source_revision SET revision_id = :revision_id"
+                ),
+                {"revision_id": pending_revision_id},
+            )
+
+    late_recall_id = 999_999
+    late_version_id = uuid4()
+    with pytest.raises(DBAPIError):
+        async with source_database.begin() as connection:
+            await connection.execute(
+                text(
+                    "INSERT INTO cpsc_recalls (recall_id, first_observed_at) "
+                    "VALUES (:recall_id, CURRENT_TIMESTAMP)"
+                ),
+                {"recall_id": late_recall_id},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO cpsc_recall_versions "
+                    "(version_id, recall_id, content_hash, raw_record, "
+                    "recall_number, official_url, created_at) VALUES "
+                    "(:version_id, :recall_id, :content_hash, '{}'::jsonb, "
+                    "'late', 'https://www.cpsc.gov/', CURRENT_TIMESTAMP)"
+                ),
+                {
+                    "content_hash": "1" * 64,
+                    "recall_id": late_recall_id,
+                    "version_id": late_version_id,
+                },
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO cpsc_revision_records "
+                    "(revision_id, recall_id, version_id, source_position) "
+                    "VALUES (:revision_id, :recall_id, :version_id, 1)"
+                ),
+                {
+                    "recall_id": late_recall_id,
+                    "revision_id": output_document(imported)["revision_id"],
+                    "version_id": late_version_id,
+                },
+            )
+
+    status = run_command("job", "cpsc-status", "--database-url", postgres_url)
+    assert (
+        output_document(status)["current_revision"]["revision_id"]
+        == (output_document(imported)["revision_id"])
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_uncommitted_projection_switch_is_not_visible(
+    postgres_url: str, source_database: AsyncEngine
+) -> None:
+    imported = run_command(
+        "job",
+        "cpsc-import-fixture",
+        "--database-url",
+        postgres_url,
+        "--fixture",
+        str(FIXTURE),
+        "--observed-at",
+        "2026-08-01T12:00:00Z",
+        "--expected-record-count",
+        "1",
+    )
+    assert imported.returncode == 0, imported.stderr
+
+    run_id = uuid4()
+    revision_id = uuid4()
+    async with source_database.connect() as connection:
+        transaction = await connection.begin()
+        await connection.execute(
+            text(
+                "INSERT INTO cpsc_ingestion_runs "
+                "(run_id, source_url, observed_at, raw_response, "
+                "raw_response_sha256, state, created_at) VALUES "
+                "(:run_id, 'recorded-test', CURRENT_TIMESTAMP, "
+                ":raw_response, :raw_hash, 'pending', CURRENT_TIMESTAMP)"
+            ),
+            {"raw_hash": "2" * 64, "raw_response": b"[]", "run_id": run_id},
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO cpsc_source_revisions "
+                "(revision_id, run_id, state, completeness, created_at) VALUES "
+                "(:revision_id, :run_id, 'pending', 'unknown', CURRENT_TIMESTAMP)"
+            ),
+            {"revision_id": revision_id, "run_id": run_id},
+        )
+        await connection.execute(
+            text(
+                "UPDATE cpsc_source_revisions SET state = 'completed', "
+                "completeness = 'complete', completed_at = CURRENT_TIMESTAMP "
+                "WHERE revision_id = :revision_id"
+            ),
+            {"revision_id": revision_id},
+        )
+        await connection.execute(
+            text(
+                "UPDATE cpsc_ingestion_runs SET state = 'completed', "
+                "finished_at = CURRENT_TIMESTAMP WHERE run_id = :run_id"
+            ),
+            {"run_id": run_id},
+        )
+        await connection.execute(
+            text("UPDATE cpsc_current_source_revision SET revision_id = :revision_id"),
+            {"revision_id": revision_id},
+        )
+        await connection.execute(text("DELETE FROM cpsc_current_records"))
+
+        status = run_command("job", "cpsc-status", "--database-url", postgres_url)
+        assert (
+            output_document(status)["current_revision"]["revision_id"]
+            == (output_document(imported)["revision_id"])
+        )
+        await transaction.rollback()
+
+    status = run_command("job", "cpsc-status", "--database-url", postgres_url)
+    assert (
+        output_document(status)["current_revision"]["revision_id"]
+        == (output_document(imported)["revision_id"])
+    )

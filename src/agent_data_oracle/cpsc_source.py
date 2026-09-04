@@ -158,7 +158,7 @@ async def _start_revision(
             "(run_id, source_url, observed_at, raw_response, raw_response_sha256, "
             "state, created_at) VALUES "
             "(:run_id, :source_url, :observed_at, :raw_response, :raw_hash, "
-            "'pending', :observed_at)"
+            "'pending', CURRENT_TIMESTAMP)"
         ),
         {
             "observed_at": observed_at,
@@ -172,10 +172,9 @@ async def _start_revision(
         text(
             "INSERT INTO cpsc_source_revisions "
             "(revision_id, run_id, state, completeness, created_at) VALUES "
-            "(:revision_id, :run_id, 'pending', 'unknown', :observed_at)"
+            "(:revision_id, :run_id, 'pending', 'unknown', CURRENT_TIMESTAMP)"
         ),
         {
-            "observed_at": observed_at,
             "revision_id": revision_id,
             "run_id": run_id,
         },
@@ -187,18 +186,16 @@ async def _reject_revision(
     *,
     run_id: UUID,
     revision_id: UUID,
-    observed_at: datetime,
     error_code: str,
 ) -> None:
     await connection.execute(
         text(
             "UPDATE cpsc_ingestion_runs SET state = 'rejected', "
-            "error_code = :error_code, finished_at = :observed_at "
+            "error_code = :error_code, finished_at = CURRENT_TIMESTAMP "
             "WHERE run_id = :run_id"
         ),
         {
             "error_code": error_code,
-            "observed_at": observed_at,
             "run_id": run_id,
         },
     )
@@ -216,15 +213,14 @@ async def _fail_revision(
     *,
     run_id: UUID,
     revision_id: UUID,
-    observed_at: datetime,
 ) -> None:
     await connection.execute(
         text(
             "UPDATE cpsc_ingestion_runs SET state = 'failed', "
-            "error_code = 'promotion_failed', finished_at = :observed_at "
+            "error_code = 'promotion_failed', finished_at = CURRENT_TIMESTAMP "
             "WHERE run_id = :run_id"
         ),
-        {"observed_at": observed_at, "run_id": run_id},
+        {"run_id": run_id},
     )
     await connection.execute(
         text(
@@ -256,7 +252,7 @@ async def _record_version(
             "recall_date_literal, last_publish_date_literal, official_url, created_at) "
             "VALUES (:version_id, :recall_id, :content_hash, "
             "CAST(:raw_record AS jsonb), :recall_number, :recall_date, "
-            ":last_publish_date, :official_url, :observed_at) "
+            ":last_publish_date, :official_url, CURRENT_TIMESTAMP) "
             "ON CONFLICT (recall_id, content_hash) DO NOTHING "
             "RETURNING version_id"
         ),
@@ -333,13 +329,23 @@ async def _promote_revision(
         text(
             "UPDATE cpsc_source_revisions SET state = 'completed', "
             "completeness = 'complete', record_count = :record_count, "
-            "completed_at = :observed_at WHERE revision_id = :revision_id"
+            "completed_at = CURRENT_TIMESTAMP WHERE revision_id = :revision_id"
         ),
         {
-            "observed_at": observed_at,
             "record_count": record_count,
             "revision_id": revision_id,
         },
+    )
+    await connection.execute(
+        text(
+            "INSERT INTO cpsc_current_source_revision "
+            "(singleton, revision_id, projected_at) "
+            "VALUES (true, :revision_id, CURRENT_TIMESTAMP) "
+            "ON CONFLICT (singleton) DO UPDATE SET "
+            "revision_id = EXCLUDED.revision_id, "
+            "projected_at = EXCLUDED.projected_at"
+        ),
+        {"revision_id": revision_id},
     )
     await connection.execute(text("DELETE FROM cpsc_current_records"))
     await connection.execute(
@@ -351,33 +357,21 @@ async def _promote_revision(
             "SELECT versions.recall_id, records.revision_id, versions.version_id, "
             "versions.recall_number, versions.recall_date_literal, "
             "versions.last_publish_date_literal, versions.official_url, "
-            "versions.raw_record, :observed_at "
+            "versions.raw_record, CURRENT_TIMESTAMP "
             "FROM cpsc_revision_records AS records "
             "JOIN cpsc_recall_versions AS versions "
             "ON versions.version_id = records.version_id "
             "WHERE records.revision_id = :revision_id"
         ),
-        {"observed_at": observed_at, "revision_id": revision_id},
-    )
-    await connection.execute(
-        text(
-            "INSERT INTO cpsc_current_source_revision "
-            "(singleton, revision_id, projected_at) "
-            "VALUES (true, :revision_id, :observed_at) "
-            "ON CONFLICT (singleton) DO UPDATE SET "
-            "revision_id = EXCLUDED.revision_id, "
-            "projected_at = EXCLUDED.projected_at"
-        ),
-        {"observed_at": observed_at, "revision_id": revision_id},
+        {"revision_id": revision_id},
     )
     await connection.execute(
         text(
             "UPDATE cpsc_ingestion_runs SET state = 'completed', "
-            "record_count = :record_count, finished_at = :observed_at "
+            "record_count = :record_count, finished_at = CURRENT_TIMESTAMP "
             "WHERE run_id = :run_id"
         ),
         {
-            "observed_at": observed_at,
             "record_count": record_count,
             "run_id": run_id,
         },
@@ -417,7 +411,6 @@ async def import_cpsc_fixture(
                     connection,
                     run_id=run_id,
                     revision_id=revision_id,
-                    observed_at=observed_at,
                     error_code=str(error),
                 )
             return RejectedImport(revision_id=revision_id, error_code=str(error))
@@ -437,7 +430,6 @@ async def import_cpsc_fixture(
                     connection,
                     run_id=run_id,
                     revision_id=revision_id,
-                    observed_at=observed_at,
                 )
             return FailedImport(revision_id=revision_id)
         return ImportResult(
@@ -475,7 +467,7 @@ async def cpsc_source_status(database_url: str) -> dict[str, object]:
                         text(
                             "SELECT state, observed_at, record_count "
                             "FROM cpsc_ingestion_runs "
-                            "ORDER BY created_at DESC, run_id DESC LIMIT 1"
+                            "ORDER BY run_sequence DESC LIMIT 1"
                         )
                     )
                 )
