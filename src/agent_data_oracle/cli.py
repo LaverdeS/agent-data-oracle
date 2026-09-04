@@ -1,14 +1,22 @@
 import argparse
 import asyncio
+import json
 import logging
 import sys
 from collections.abc import Callable, Coroutine, Sequence
+from pathlib import Path
 from typing import Any, cast
 
 import uvicorn
 from sqlalchemy.exc import SQLAlchemyError
 
 from agent_data_oracle.config import database_url_from_environment
+from agent_data_oracle.cpsc_source import (
+    ImportResult,
+    cpsc_source_status,
+    import_cpsc_fixture,
+    parse_observed_at,
+)
 from agent_data_oracle.database import Database
 from agent_data_oracle.observability import configure_logging
 from agent_data_oracle.schema import migrate_to_head
@@ -71,6 +79,28 @@ def _database_check_job(arguments: argparse.Namespace) -> int:
     return 1
 
 
+def _cpsc_import_fixture_job(arguments: argparse.Namespace) -> int:
+    configure_logging()
+    result = _run_async(
+        import_cpsc_fixture(
+            database_url=_database_url(arguments),
+            fixture_path=Path(cast(str, arguments.fixture)),
+            observed_at=parse_observed_at(cast(str, arguments.observed_at)),
+            expected_record_count=cast(int, arguments.expected_record_count),
+            source_url=cast(str, arguments.source_url),
+        )
+    )
+    print(json.dumps(result.as_dict(), separators=(",", ":"), sort_keys=True))
+    return 0 if isinstance(result, ImportResult) else 1
+
+
+def _cpsc_status_job(arguments: argparse.Namespace) -> int:
+    configure_logging()
+    result = _run_async(cpsc_source_status(_database_url(arguments)))
+    print(json.dumps(result, separators=(",", ":"), sort_keys=True))
+    return 0
+
+
 def _add_database_url(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--database-url",
@@ -100,6 +130,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_database_url(database_check)
     database_check.set_defaults(handler=_database_check_job)
+
+    cpsc_import = jobs.add_parser(
+        "cpsc-import-fixture",
+        help="import one recorded CPSC response as a complete source revision",
+    )
+    _add_database_url(cpsc_import)
+    cpsc_import.add_argument("--fixture", required=True)
+    cpsc_import.add_argument("--observed-at", required=True)
+    cpsc_import.add_argument("--expected-record-count", required=True, type=int)
+    cpsc_import.add_argument(
+        "--source-url",
+        default="https://www.saferproducts.gov/RestWebServices/Recall",
+    )
+    cpsc_import.set_defaults(handler=_cpsc_import_fixture_job)
+
+    cpsc_status = jobs.add_parser(
+        "cpsc-status", help="report current CPSC revision and last ingestion state"
+    )
+    _add_database_url(cpsc_status)
+    cpsc_status.set_defaults(handler=_cpsc_status_job)
 
     return parser
 

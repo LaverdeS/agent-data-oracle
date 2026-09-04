@@ -45,6 +45,25 @@ Run a named short-lived job from the same package:
 uv run agent-data-oracle job database-check
 ```
 
+Import a recorded CPSC API response without contacting the live source, then
+inspect the current completed revision and last run state:
+
+```console
+uv run agent-data-oracle job cpsc-import-fixture \
+  --fixture tests/fixtures/cpsc/recall-10887.json \
+  --observed-at 2026-09-04T00:00:00Z \
+  --expected-record-count 1 \
+  --source-url 'https://www.saferproducts.gov/RestWebServices/Recall?RecallID=10887&format=json'
+uv run agent-data-oracle job cpsc-status
+```
+
+The import stores the received response bytes, creates content-addressed recall
+versions and immutable observations, and promotes the complete revision and
+current projection in one PostgreSQL transaction. The required expected count
+rejects truncated fixture responses. Rejected input and failed promotion are
+recorded but never replace the current completed revision. The status output
+contains revision metadata and counts, not source payloads.
+
 ## Quality gates
 
 With the Compose database running:
