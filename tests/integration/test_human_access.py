@@ -198,6 +198,19 @@ async def verify_login(client: AsyncClient, token: str) -> None:
     assert response.status_code == 303
 
 
+async def record_test_declaration(client: AsyncClient) -> None:
+    declaration = await client.get("/declare")
+    response = await client.post(
+        "/declare",
+        data={
+            "operator_type": "business_operator",
+            "sells_into_us": "yes",
+            "csrf_token": declaration.cookies["ado_csrf"],
+        },
+    )
+    assert response.status_code == 303
+
+
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_founder_requires_totp_and_receives_one_time_recovery_codes(
@@ -225,6 +238,8 @@ async def test_founder_requires_totp_and_receives_one_time_recovery_codes(
         ) as client,
     ):
         await verify_login(client, await request_login(client, email))
+        undeclared_founder_gate = await client.get("/founder")
+        await record_test_declaration(client)
         founder_gate = await client.get("/founder")
         enrollment = await client.get(founder_gate.headers["location"])
         secret = re.search(r'data-totp-secret="([A-Z2-7]+)"', enrollment.text).group(1)  # type: ignore[union-attr]
@@ -263,6 +278,8 @@ async def test_founder_requires_totp_and_receives_one_time_recovery_codes(
             },
         )
 
+    assert undeclared_founder_gate.status_code == 303
+    assert undeclared_founder_gate.headers["location"] == "/declare"
     assert founder_gate.status_code == 303
     assert founder_gate.headers["location"] == "/founder/totp/enroll"
     assert enrollment.status_code == 200
@@ -584,6 +601,7 @@ async def test_founder_second_factor_attempts_are_bounded_per_session(
         ) as client,
     ):
         await verify_login(client, await request_login(client, email))
+        await record_test_declaration(client)
         enrollment = await client.get("/founder/totp/enroll")
         secret_match = re.search(r'data-totp-secret="([A-Z2-7]+)"', enrollment.text)
         assert secret_match is not None

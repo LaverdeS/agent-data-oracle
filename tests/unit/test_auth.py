@@ -1,5 +1,6 @@
 import base64
 import json
+from datetime import UTC, datetime, timedelta
 from email import message_from_bytes
 from typing import Any
 from urllib.request import Request
@@ -8,6 +9,7 @@ import pytest
 
 from agent_data_oracle.auth import (
     GmailApiEmailProvider,
+    GmailOAuthAccessToken,
     email_provider_from_environment,
 )
 from agent_data_oracle.config import auth_secret_from_environment
@@ -66,8 +68,50 @@ def test_production_requires_a_stable_authentication_secret(
 
 def test_production_selects_gmail_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_ENV", "production")
-    monkeypatch.setenv("GMAIL_API_ACCESS_TOKEN", "runtime-secret")
+    monkeypatch.setenv("GMAIL_OAUTH_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GMAIL_OAUTH_CLIENT_SECRET", "client-secret")
+    monkeypatch.setenv("GMAIL_OAUTH_REFRESH_TOKEN", "refresh-token")
 
     provider = email_provider_from_environment()
 
     assert isinstance(provider, GmailApiEmailProvider)
+
+
+def test_gmail_oauth_access_token_refreshes_and_caches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = datetime(2026, 9, 4, 10, 0, tzinfo=UTC)
+    requests: list[Request] = []
+
+    class OAuthResponse(GmailResponse):
+        def read(self) -> bytes:
+            return b'{"access_token":"fresh-token","expires_in":3600}'
+
+    def urlopen(request: Request, *, timeout: int) -> OAuthResponse:
+        assert timeout == 10
+        requests.append(request)
+        return OAuthResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    clock = MutableTokenClock(now)
+    access_token = GmailOAuthAccessToken(
+        client_id="client-id",
+        client_secret="client-secret",
+        refresh_token="refresh-token",
+        clock=clock,
+    )
+
+    assert access_token() == "fresh-token"
+    assert access_token() == "fresh-token"
+    clock.instant += timedelta(hours=1)
+    assert access_token() == "fresh-token"
+    assert len(requests) == 2
+    assert b"refresh_token=refresh-token" in (requests[0].data or b"")
+
+
+class MutableTokenClock:
+    def __init__(self, instant: datetime) -> None:
+        self.instant = instant
+
+    def __call__(self) -> datetime:
+        return self.instant

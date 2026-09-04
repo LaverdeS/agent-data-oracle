@@ -39,8 +39,9 @@ Local mode uses an in-memory email capture provider and non-secure localhost
 cookies. Tests inject that provider to follow passwordless links without ever
 printing token values. A deployed environment must set `APP_ENV=production`, a
 stable `AUTH_SECRET` of at least 24 bytes, canonical HTTPS `PUBLIC_ORIGIN`, one
-or more comma-separated `FOUNDER_EMAILS`, and a Secret Manager-supplied
-`GMAIL_API_ACCESS_TOKEN`. Production
+or more comma-separated `FOUNDER_EMAILS`, and Secret Manager-supplied
+`GMAIL_OAUTH_CLIENT_ID`, `GMAIL_OAUTH_CLIENT_SECRET`, and
+`GMAIL_OAUTH_REFRESH_TOKEN` values. Production
 sessions are `Secure`, HTTP-only, same-site cookies; sign-in links expire after
 15 minutes and sessions after 12 hours.
 

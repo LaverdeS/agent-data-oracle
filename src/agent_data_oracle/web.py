@@ -243,8 +243,12 @@ def create_app(
     @app.get("/founder")
     async def founder_controls(request: Request) -> Response:
         operator = await authenticated_operator(request)
-        if operator is None or not operator.is_founder:
+        if operator is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if not operator.is_founder:
             return HTMLResponse("Not found", status_code=404)
+        if operator.operator_type is None:
+            return RedirectResponse("/declare", status_code=303)
         if not await human_access.founder_factor_exists(operator.operator_id):
             return RedirectResponse("/founder/totp/enroll", status_code=303)
         if operator.founder_second_factor_at is None:
@@ -256,6 +260,13 @@ def create_app(
         session_token = request.cookies.get("ado_session")
         if session_token is None:
             return RedirectResponse("/sign-in", status_code=303)
+        operator = await authenticated_operator(request)
+        if operator is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if not operator.is_founder:
+            return HTMLResponse("Not found", status_code=404)
+        if operator.operator_type is None:
+            return RedirectResponse("/declare", status_code=303)
         secret = await human_access.totp_enrollment_secret(session_token)
         if secret is None:
             return RedirectResponse("/sign-in", status_code=303)
@@ -273,6 +284,13 @@ def create_app(
             return HTMLResponse("Invalid request token", status_code=403)
         if session_token is None:
             return RedirectResponse("/sign-in", status_code=303)
+        operator = await authenticated_operator(request)
+        if operator is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if not operator.is_founder:
+            return HTMLResponse("Not found", status_code=404)
+        if operator.operator_type is None:
+            return RedirectResponse("/declare", status_code=303)
         secret = await human_access.totp_enrollment_secret(session_token)
         if secret is None:
             return RedirectResponse("/sign-in", status_code=303)
@@ -295,12 +313,12 @@ def create_app(
     @app.get("/founder/totp")
     async def founder_totp_challenge(request: Request) -> Response:
         operator = await authenticated_operator(request)
-        if (
-            operator is None
-            or not operator.is_founder
-            or not await human_access.founder_factor_exists(operator.operator_id)
-        ):
+        if operator is None or not operator.is_founder:
             return HTMLResponse("Not found", status_code=404)
+        if operator.operator_type is None:
+            return RedirectResponse("/declare", status_code=303)
+        if not await human_access.founder_factor_exists(operator.operator_id):
+            return RedirectResponse("/founder/totp/enroll", status_code=303)
         return response_with_csrf(request, "totp_challenge.html", {"error": False})
 
     @app.post("/founder/totp")
@@ -311,6 +329,13 @@ def create_app(
             return HTMLResponse("Invalid request token", status_code=403)
         if session_token is None:
             return HTMLResponse("Not found", status_code=404)
+        operator = await authenticated_operator(request)
+        if operator is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if not operator.is_founder:
+            return HTMLResponse("Not found", status_code=404)
+        if operator.operator_type is None:
+            return RedirectResponse("/declare", status_code=303)
         result = await human_access.verify_founder_second_factor(
             session_token=session_token,
             credential=fields.get("credential", ""),

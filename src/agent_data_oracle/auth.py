@@ -2,6 +2,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import os
 import secrets
@@ -12,7 +13,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from enum import StrEnum
+from threading import Lock
 from typing import Protocol
+from urllib.parse import urlencode
 from uuid import UUID, uuid4
 
 from sqlalchemy import text
@@ -103,17 +106,86 @@ class GmailApiEmailProvider:
         await asyncio.to_thread(send)
 
 
+def utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+class GmailOAuthAccessToken:
+    """Refresh and briefly cache a Gmail OAuth access token."""
+
+    def __init__(
+        self,
+        *,
+        client_id: str,
+        client_secret: str,
+        refresh_token: str,
+        clock: Callable[[], datetime] = utc_now,
+    ) -> None:
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._refresh_token = refresh_token
+        self._clock = clock
+        self._cached: tuple[str, datetime] | None = None
+        self._lock = Lock()
+
+    def __call__(self) -> str:
+        now = self._clock()
+        with self._lock:
+            if self._cached is not None:
+                token, expires_at = self._cached
+                if expires_at - now > timedelta(minutes=1):
+                    return token
+            request = urllib.request.Request(
+                "https://oauth2.googleapis.com/token",
+                data=urlencode(
+                    {
+                        "client_id": self._client_id,
+                        "client_secret": self._client_secret,
+                        "refresh_token": self._refresh_token,
+                        "grant_type": "refresh_token",
+                    }
+                ).encode(),
+                method="POST",
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            with urllib.request.urlopen(request, timeout=10) as response:
+                document = json.loads(response.read())
+            access_token = document.get("access_token")
+            expires_in = document.get("expires_in")
+            if (
+                not isinstance(access_token, str)
+                or not access_token
+                or not isinstance(expires_in, int)
+                or isinstance(expires_in, bool)
+                or expires_in <= 60
+            ):
+                raise RuntimeError("gmail_oauth_refresh_failed")
+            self._cached = (access_token, now + timedelta(seconds=expires_in))
+            return access_token
+
+
 def email_provider_from_environment() -> EmailProvider:
     if os.environ.get("APP_ENV", "local").casefold() in {"local", "test"}:
         return LocalCaptureEmailProvider()
-    access_token = os.environ.get("GMAIL_API_ACCESS_TOKEN")
-    if access_token is None:
-        raise RuntimeError("GMAIL_API_ACCESS_TOKEN is required outside local/test")
-    return GmailApiEmailProvider(lambda: access_token)
-
-
-def utc_now() -> datetime:
-    return datetime.now(UTC)
+    variable_names = (
+        "GMAIL_OAUTH_CLIENT_ID",
+        "GMAIL_OAUTH_CLIENT_SECRET",
+        "GMAIL_OAUTH_REFRESH_TOKEN",
+    )
+    values = tuple(os.environ.get(name) for name in variable_names)
+    if any(value is None for value in values):
+        raise RuntimeError("Gmail OAuth credentials are required outside local/test")
+    client_id, client_secret, refresh_token = values
+    assert client_id is not None
+    assert client_secret is not None
+    assert refresh_token is not None
+    return GmailApiEmailProvider(
+        GmailOAuthAccessToken(
+            client_id=client_id,
+            client_secret=client_secret,
+            refresh_token=refresh_token,
+        )
+    )
 
 
 def normalize_email(value: str) -> str | None:
@@ -467,6 +539,7 @@ class HumanAccess:
         if (
             operator is None
             or not operator.is_founder
+            or operator.operator_type is None
             or now - operator.reauthenticated_at > REAUTHENTICATION_LIFETIME
             or await self.founder_factor_exists(operator.operator_id)
         ):
@@ -481,6 +554,7 @@ class HumanAccess:
         if (
             operator is None
             or not operator.is_founder
+            or operator.operator_type is None
             or now - operator.reauthenticated_at > REAUTHENTICATION_LIFETIME
             or await self.founder_factor_exists(operator.operator_id)
             or not self._totp_is_valid(operator.operator_id, code)
@@ -525,7 +599,11 @@ class HumanAccess:
         self, *, session_token: str, credential: str
     ) -> SecondFactorResult:
         operator = await self.authenticated_operator(session_token)
-        if operator is None or not operator.is_founder:
+        if (
+            operator is None
+            or not operator.is_founder
+            or operator.operator_type is None
+        ):
             return SecondFactorResult.INVALID
         now = self._clock()
         attempt_subject = self._digest("factor-session", session_token)
