@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Declare your use · Agent Data Oracle{% endblock %}
+{% block navigation %}{% endblock %}
+{% block content %}
+  <p class="quiet">Required declaration</p>
+  <h1>How are you using this evidence queue?</h1>
+  <p class="lede">
+    Your answers qualify usage-learning evidence. They are declarations and do
+    not verify your identity or legal business status.
+  </p>
+  {% if error %}<p class="error">Choose one answer in each group.</p>{% endif %}
+  <form method="post" action="/declare">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <fieldset>
+      <legend>Operator role</legend>
+      <label><input type="radio" name="operator_type" value="business_operator" required> I am reviewing as a business operator</label>
+      <label><input type="radio" name="operator_type" value="agent_operator" required> I am preparing use for an external agent</label>
+    </fieldset>
+    <fieldset>
+      <legend>U.S.-selling relevance</legend>
+      <label><input type="radio" name="sells_into_us" value="yes" required> These products are sold into the United States</label>
+      <label><input type="radio" name="sells_into_us" value="no" required> These products are not sold into the United States</label>
+    </fieldset>
+    <button type="submit">Record declaration</button>
+  </form>
+{% endblock %}

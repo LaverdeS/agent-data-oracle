@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Sign in · Agent Data Oracle{% endblock %}
+{% block content %}
+  <p class="quiet">Passwordless access</p>
+  <h1>Request a sign-in link</h1>
+  <p class="lede">
+    We send the same response whether or not an account exists. Links are
+    single-use and expire after 15 minutes.
+  </p>
+  <form method="post" action="/auth/sign-in">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="email">Work email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required>
+    <button type="submit">Email my secure link</button>
+  </form>
+{% endblock %}

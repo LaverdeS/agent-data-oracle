@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>{% block title %}Agent Data Oracle{% endblock %}</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172126;
+        --muted: #526168;
+        --paper: #f4f0e7;
+        --panel: #fffdf8;
+        --line: #d7d0c2;
+        --accent: #075e54;
+        --accent-ink: #ffffff;
+        --warning: #8b4a13;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+      header, main, footer { width: min(100% - 2rem, 72rem); margin-inline: auto; }
+      header { display: flex; justify-content: space-between; align-items: center; padding-block: 1.25rem; }
+      header a { color: var(--ink); font-weight: 700; text-decoration: none; }
+      main { padding-block: clamp(2rem, 7vw, 6rem); }
+      h1 { max-width: 18ch; font-family: Georgia, serif; font-size: clamp(2.5rem, 7vw, 5.5rem); line-height: .98; letter-spacing: -.045em; }
+      h2 { font-family: Georgia, serif; font-size: 1.55rem; }
+      p { max-width: 68ch; }
+      .lede { color: var(--muted); font-size: 1.2rem; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; margin-block: 2.5rem; }
+      .card, form { background: var(--panel); border: 1px solid var(--line); border-radius: .75rem; padding: 1.4rem; }
+      label, legend { font-weight: 700; }
+      input[type="email"], input[type="text"] { width: 100%; margin-block: .4rem 1rem; padding: .75rem; border: 1px solid #9ba4a7; border-radius: .35rem; font: inherit; }
+      fieldset { border: 0; margin: 0 0 1rem; padding: 0; }
+      fieldset label { display: block; font-weight: 400; margin-block: .55rem; }
+      button, .button { display: inline-block; border: 0; border-radius: .35rem; padding: .75rem 1rem; background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+      .warning { border-left: .3rem solid var(--warning); padding-left: 1rem; }
+      .quiet { color: var(--muted); font-size: .92rem; }
+      .error { color: #9c1c1c; font-weight: 700; }
+      footer { border-top: 1px solid var(--line); padding-block: 1.5rem 3rem; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/">Agent Data Oracle</a>
+      {% block navigation %}<a href="/sign-in">Sign in</a>{% endblock %}
+    </header>
+    <main>{% block content %}{% endblock %}</main>
+    <footer>CPSC/U.S. consumer-product recall evidence only.</footer>
+  </body>
+</html>

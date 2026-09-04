@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Save recovery codes · Agent Data Oracle{% endblock %}
+{% block navigation %}{% endblock %}
+{% block content %}
+  <p class="quiet">Founder-only security</p>
+  <h1>Save your recovery codes</h1>
+  <p class="warning">These codes are shown only once. Store them in your password manager.</p>
+  <ul class="card">
+    {% for code in recovery_codes %}<li><code data-recovery-code="{{ code }}">{{ code }}</code></li>{% endfor %}
+  </ul>
+  <a class="button" href="/founder">Continue to founder controls</a>
+{% endblock %}

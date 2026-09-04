@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Founder verification · Agent Data Oracle{% endblock %}
+{% block navigation %}{% endblock %}
+{% block content %}
+  <p class="quiet">Founder-only security</p>
+  <h1>Verify your second factor</h1>
+  {% if error %}<p class="error">That authenticator or recovery code could not be verified.</p>{% endif %}
+  <form method="post" action="/founder/totp">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="credential">Authenticator or recovery code</label>
+    <input id="credential" name="credential" type="text" autocomplete="one-time-code" required>
+    <button type="submit">Verify founder access</button>
+  </form>
+{% endblock %}

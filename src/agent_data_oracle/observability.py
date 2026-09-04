@@ -18,6 +18,7 @@ _SAFE_MESSAGES = frozenset(
         "database_check_failed",
         "migration_completed",
         "request_completed",
+        "sign_in_delivery_failed",
     }
 )
 

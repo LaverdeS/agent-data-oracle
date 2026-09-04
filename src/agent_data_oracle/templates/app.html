@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Evidence queue · Agent Data Oracle{% endblock %}
+{% block navigation %}
+  <form method="post" action="/auth/sign-out" style="border:0;padding:0;background:transparent">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">Sign out</button>
+  </form>
+{% endblock %}
+{% block content %}
+  <p class="quiet">Secure operator shell</p>
+  <h1>Your evidence queues</h1>
+  <div class="card">
+    <h2>{% if operator.operator_type == "business_operator" %}Declared business operator{% else %}Declared external-agent operator{% endif %}</h2>
+    <p>{% if operator.sells_into_us %}Products sold into the United States{% else %}Products not sold into the United States{% endif %}</p>
+    <p class="quiet">This declaration does not verify your legal business status.</p>
+  </div>
+  <p>The first evidence-queue submission flow arrives in ticket #23.</p>
+  {% if operator.is_founder %}<p><a class="button" href="/founder">Founder controls</a></p>{% endif %}
+{% endblock %}

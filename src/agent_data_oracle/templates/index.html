@@ -1,18 +1,51 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Agent Data Oracle</title>
-  </head>
-  <body>
-    <main>
-      <h1>CPSC evidence, not a safety verdict</h1>
+{% extends "base.html" %}
+{% block content %}
+  <p class="quiet">A bounded usage-learning phase</p>
+  <h1>CPSC evidence, not a safety verdict</h1>
+  <p class="lede">
+    Compare identifiers you are authorized to review with official U.S. CPSC
+    recall records, then inspect the source evidence yourself.
+  </p>
+  <a class="button" href="/sign-in">Request a secure sign-in link</a>
+  <section class="grid" aria-label="Important limits">
+    <article class="card">
+      <h2>Conditional evidence</h2>
       <p>
-        This usage-learning phase will compare identifiers supplied by an
-        operator with official U.S. CPSC recall records. It does not determine
-        safety, compliance, permission to sell, or completeness.
+        Results are not legal advice or a determination that a product is
+        recalled, safe, compliant, illegal, removable, cleared, or permitted
+        for sale. No-candidate results do not prove completeness.
       </p>
-    </main>
-  </body>
-</html>
+    </article>
+    <article class="card">
+      <h2>Strictly bounded data</h2>
+      <p>
+        The service uses only official CPSC recall records and identifiers you
+        paste. It does not crawl pages or accept catalogues, files, customer,
+        order, or marketplace data.
+      </p>
+    </article>
+    <article class="card">
+      <h2>No payment</h2>
+      <p>
+        No payment is accepted during this usage-learning phase. Free activity
+        does not establish willingness to pay, product-market fit, or a data moat.
+      </p>
+    </article>
+  </section>
+  <section class="warning">
+    <h2>Privacy and providers</h2>
+    <p>
+      Operator submissions and evaluations are retained only through the phase
+      and no later than 30 days after the phase closes, subject to valid earlier
+      deletion or a documented incident hold. Application and security logs are
+      retained for 14 days and exclude submitted identifiers and email content.
+    </p>
+    <p>
+      Application data is hosted on Google Cloud in Frankfurt. Sign-in email is
+      processed by Google Workspace outside that regional boundary. GitHub is
+      used for development and CI without production data. Public CPSC requests
+      contain no operator submission.
+    </p>
+    <p>This independent service is not endorsed by CPSC.</p>
+  </section>
+{% endblock %}

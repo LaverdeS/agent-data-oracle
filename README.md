@@ -35,6 +35,14 @@ curl http://127.0.0.1:8080/live
 curl http://127.0.0.1:8080/ready
 ```
 
+Local mode uses an in-memory email capture provider and non-secure localhost
+cookies. Tests inject that provider to follow passwordless links without ever
+printing token values. A deployed environment must set `APP_ENV=production`, a
+stable `AUTH_SECRET` of at least 24 bytes, one or more comma-separated
+`FOUNDER_EMAILS`, HTTPS, and an injected `GmailApiEmailProvider`. Production
+sessions are `Secure`, HTTP-only, same-site cookies; sign-in links expire after
+15 minutes and sessions after 12 hours.
+
 The local default database URL targets the Compose service. Set
 `DATABASE_URL` to a SQLAlchemy `postgresql+psycopg://` URL in other
 environments. Migrations never run implicitly when the web process starts.
