@@ -31,6 +31,31 @@ def output_document(result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
     return json.loads(result.stdout.splitlines()[-1])
 
 
+def import_fixture(
+    postgres_url: str,
+    observed_at: str,
+    *,
+    fixture: Path = FIXTURE,
+    expected_record_count: int = 1,
+    source_url: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    arguments = [
+        "job",
+        "cpsc-import-fixture",
+        "--database-url",
+        postgres_url,
+        "--fixture",
+        str(fixture),
+        "--observed-at",
+        observed_at,
+        "--expected-record-count",
+        str(expected_record_count),
+    ]
+    if source_url is not None:
+        arguments.extend(("--source-url", source_url))
+    return run_command(*arguments)
+
+
 @pytest_asyncio.fixture
 async def source_database(postgres_url: str) -> AsyncEngine:
     migration = run_command("migrate", "--database-url", postgres_url)
@@ -56,19 +81,10 @@ async def source_database(postgres_url: str) -> AsyncEngine:
 async def test_fixture_import_creates_an_inspectable_completed_revision(
     postgres_url: str, source_database: AsyncEngine
 ) -> None:
-    imported = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
+    imported = import_fixture(
         postgres_url,
-        "--fixture",
-        str(FIXTURE),
-        "--observed-at",
         "2026-08-01T12:00:00Z",
-        "--expected-record-count",
-        "1",
-        "--source-url",
-        FIXTURE_SOURCE_URL,
+        source_url=FIXTURE_SOURCE_URL,
     )
     status = run_command("job", "cpsc-status", "--database-url", postgres_url)
 
@@ -128,29 +144,11 @@ async def test_equivalent_json_reuses_version_and_appends_observation(
         encoding="utf-8",
     )
 
-    first = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
+    first = import_fixture(postgres_url, "2026-08-01T12:00:00Z")
+    second = import_fixture(
         postgres_url,
-        "--fixture",
-        str(FIXTURE),
-        "--observed-at",
-        "2026-08-01T12:00:00Z",
-        "--expected-record-count",
-        "1",
-    )
-    second = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
-        postgres_url,
-        "--fixture",
-        str(reformatted_fixture),
-        "--observed-at",
         "2026-07-01T12:00:00Z",
-        "--expected-record-count",
-        "1",
+        fixture=reformatted_fixture,
     )
 
     assert first.returncode == 0, first.stderr
@@ -191,30 +189,12 @@ async def test_equivalent_json_reuses_version_and_appends_observation(
 async def test_rejected_fixture_does_not_replace_current_revision(
     postgres_url: str, source_database: AsyncEngine
 ) -> None:
-    valid = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
-        postgres_url,
-        "--fixture",
-        str(FIXTURE),
-        "--observed-at",
-        "2026-08-01T12:00:00Z",
-        "--expected-record-count",
-        "1",
-    )
+    valid = import_fixture(postgres_url, "2026-08-01T12:00:00Z")
 
-    rejected = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
+    rejected = import_fixture(
         postgres_url,
-        "--fixture",
-        str(FIXTURE),
-        "--observed-at",
         "2026-08-02T12:00:00Z",
-        "--expected-record-count",
-        "2",
+        expected_record_count=2,
     )
     status = run_command("job", "cpsc-status", "--database-url", postgres_url)
 
@@ -243,18 +223,7 @@ async def test_rejected_fixture_does_not_replace_current_revision(
 async def test_failed_promotion_keeps_the_previous_current_revision(
     postgres_url: str, source_database: AsyncEngine
 ) -> None:
-    valid = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
-        postgres_url,
-        "--fixture",
-        str(FIXTURE),
-        "--observed-at",
-        "2026-08-01T12:00:00Z",
-        "--expected-record-count",
-        "1",
-    )
+    valid = import_fixture(postgres_url, "2026-08-01T12:00:00Z")
     assert valid.returncode == 0, valid.stderr
 
     async with source_database.begin() as connection:
@@ -265,18 +234,7 @@ async def test_failed_promotion_keeps_the_previous_current_revision(
             )
         )
     try:
-        failed = run_command(
-            "job",
-            "cpsc-import-fixture",
-            "--database-url",
-            postgres_url,
-            "--fixture",
-            str(FIXTURE),
-            "--observed-at",
-            "2026-08-02T12:00:00Z",
-            "--expected-record-count",
-            "1",
-        )
+        failed = import_fixture(postgres_url, "2026-08-02T12:00:00Z")
     finally:
         async with source_database.begin() as connection:
             await connection.execute(
@@ -301,18 +259,7 @@ async def test_failed_promotion_keeps_the_previous_current_revision(
 async def test_record_versions_are_immutable(
     postgres_url: str, source_database: AsyncEngine
 ) -> None:
-    imported = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
-        postgres_url,
-        "--fixture",
-        str(FIXTURE),
-        "--observed-at",
-        "2026-08-01T12:00:00Z",
-        "--expected-record-count",
-        "1",
-    )
+    imported = import_fixture(postgres_url, "2026-08-01T12:00:00Z")
     assert imported.returncode == 0, imported.stderr
 
     with pytest.raises(DBAPIError):
@@ -327,30 +274,8 @@ async def test_record_versions_are_immutable(
 async def test_current_projection_cannot_mix_completed_revisions(
     postgres_url: str, source_database: AsyncEngine
 ) -> None:
-    first = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
-        postgres_url,
-        "--fixture",
-        str(FIXTURE),
-        "--observed-at",
-        "2026-08-01T12:00:00Z",
-        "--expected-record-count",
-        "1",
-    )
-    second = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
-        postgres_url,
-        "--fixture",
-        str(FIXTURE),
-        "--observed-at",
-        "2026-08-02T12:00:00Z",
-        "--expected-record-count",
-        "1",
-    )
+    first = import_fixture(postgres_url, "2026-08-01T12:00:00Z")
+    second = import_fixture(postgres_url, "2026-08-02T12:00:00Z")
     assert first.returncode == 0, first.stderr
     assert second.returncode == 0, second.stderr
 
@@ -367,18 +292,7 @@ async def test_current_projection_cannot_mix_completed_revisions(
 async def test_pending_and_late_source_rows_never_enter_current_projection(
     postgres_url: str, source_database: AsyncEngine
 ) -> None:
-    imported = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
-        postgres_url,
-        "--fixture",
-        str(FIXTURE),
-        "--observed-at",
-        "2026-08-01T12:00:00Z",
-        "--expected-record-count",
-        "1",
-    )
+    imported = import_fixture(postgres_url, "2026-08-01T12:00:00Z")
     assert imported.returncode == 0, imported.stderr
 
     pending_run_id = uuid4()
@@ -466,18 +380,7 @@ async def test_pending_and_late_source_rows_never_enter_current_projection(
 async def test_uncommitted_projection_switch_is_not_visible(
     postgres_url: str, source_database: AsyncEngine
 ) -> None:
-    imported = run_command(
-        "job",
-        "cpsc-import-fixture",
-        "--database-url",
-        postgres_url,
-        "--fixture",
-        str(FIXTURE),
-        "--observed-at",
-        "2026-08-01T12:00:00Z",
-        "--expected-record-count",
-        "1",
-    )
+    imported = import_fixture(postgres_url, "2026-08-01T12:00:00Z")
     assert imported.returncode == 0, imported.stderr
 
     run_id = uuid4()

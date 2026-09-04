@@ -2,6 +2,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, cast
 from uuid import UUID, uuid4
@@ -15,6 +16,18 @@ CPSC_RECALL_API_URL = "https://www.saferproducts.gov/RestWebServices/Recall"
 
 class SourceValidationError(ValueError):
     """The received source body cannot become a completed revision."""
+
+
+class RevisionState(StrEnum):
+    COMPLETED = "completed"
+    FAILED = "failed"
+    REJECTED = "rejected"
+
+
+@dataclass(frozen=True)
+class RevisionIdentity:
+    run_id: UUID
+    revision_id: UUID
 
 
 @dataclass(frozen=True)
@@ -42,7 +55,7 @@ class ImportResult:
             "record_count": self.record_count,
             "reused_version_count": self.reused_version_count,
             "revision_id": str(self.revision_id),
-            "state": "completed",
+            "state": RevisionState.COMPLETED,
         }
 
 
@@ -55,7 +68,7 @@ class RejectedImport:
         return {
             "error_code": self.error_code,
             "revision_id": str(self.revision_id),
-            "state": "rejected",
+            "state": RevisionState.REJECTED,
         }
 
 
@@ -67,7 +80,7 @@ class FailedImport:
         return {
             "error_code": "promotion_failed",
             "revision_id": str(self.revision_id),
-            "state": "failed",
+            "state": RevisionState.FAILED,
         }
 
 
@@ -146,8 +159,7 @@ def parse_source_records(
 async def _start_revision(
     connection: AsyncConnection,
     *,
-    run_id: UUID,
-    revision_id: UUID,
+    identity: RevisionIdentity,
     source_url: str,
     observed_at: datetime,
     raw_response: bytes,
@@ -164,7 +176,7 @@ async def _start_revision(
             "observed_at": observed_at,
             "raw_hash": hashlib.sha256(raw_response).hexdigest(),
             "raw_response": raw_response,
-            "run_id": run_id,
+            "run_id": identity.run_id,
             "source_url": source_url,
         },
     )
@@ -175,59 +187,39 @@ async def _start_revision(
             "(:revision_id, :run_id, 'pending', 'unknown', CURRENT_TIMESTAMP)"
         ),
         {
-            "revision_id": revision_id,
-            "run_id": run_id,
+            "revision_id": identity.revision_id,
+            "run_id": identity.run_id,
         },
     )
 
 
-async def _reject_revision(
+async def _finish_unsuccessful_revision(
     connection: AsyncConnection,
     *,
-    run_id: UUID,
-    revision_id: UUID,
+    identity: RevisionIdentity,
+    state: RevisionState,
     error_code: str,
 ) -> None:
+    if state not in (RevisionState.FAILED, RevisionState.REJECTED):
+        raise ValueError("unsuccessful revision requires a terminal failure state")
     await connection.execute(
         text(
-            "UPDATE cpsc_ingestion_runs SET state = 'rejected', "
+            "UPDATE cpsc_ingestion_runs SET state = :state, "
             "error_code = :error_code, finished_at = CURRENT_TIMESTAMP "
             "WHERE run_id = :run_id"
         ),
         {
             "error_code": error_code,
-            "run_id": run_id,
+            "run_id": identity.run_id,
+            "state": state.value,
         },
     )
     await connection.execute(
         text(
-            "UPDATE cpsc_source_revisions SET state = 'rejected', "
+            "UPDATE cpsc_source_revisions SET state = :state, "
             "completeness = 'partial' WHERE revision_id = :revision_id"
         ),
-        {"revision_id": revision_id},
-    )
-
-
-async def _fail_revision(
-    connection: AsyncConnection,
-    *,
-    run_id: UUID,
-    revision_id: UUID,
-) -> None:
-    await connection.execute(
-        text(
-            "UPDATE cpsc_ingestion_runs SET state = 'failed', "
-            "error_code = 'promotion_failed', finished_at = CURRENT_TIMESTAMP "
-            "WHERE run_id = :run_id"
-        ),
-        {"run_id": run_id},
-    )
-    await connection.execute(
-        text(
-            "UPDATE cpsc_source_revisions SET state = 'failed', "
-            "completeness = 'partial' WHERE revision_id = :revision_id"
-        ),
-        {"revision_id": revision_id},
+        {"revision_id": identity.revision_id, "state": state.value},
     )
 
 
@@ -283,8 +275,7 @@ async def _record_version(
 async def _promote_revision(
     connection: AsyncConnection,
     *,
-    run_id: UUID,
-    revision_id: UUID,
+    identity: RevisionIdentity,
     records: tuple[CpscRecord, ...],
     observed_at: datetime,
 ) -> int:
@@ -302,7 +293,7 @@ async def _promote_revision(
             ),
             {
                 "recall_id": record.recall_id,
-                "revision_id": revision_id,
+                "revision_id": identity.revision_id,
                 "source_position": position,
                 "version_id": version_id,
             },
@@ -318,8 +309,8 @@ async def _promote_revision(
                 "observation_id": uuid4(),
                 "observed_at": observed_at,
                 "recall_id": record.recall_id,
-                "revision_id": revision_id,
-                "run_id": run_id,
+                "revision_id": identity.revision_id,
+                "run_id": identity.run_id,
                 "version_id": version_id,
             },
         )
@@ -333,7 +324,7 @@ async def _promote_revision(
         ),
         {
             "record_count": record_count,
-            "revision_id": revision_id,
+            "revision_id": identity.revision_id,
         },
     )
     await connection.execute(
@@ -345,7 +336,7 @@ async def _promote_revision(
             "revision_id = EXCLUDED.revision_id, "
             "projected_at = EXCLUDED.projected_at"
         ),
-        {"revision_id": revision_id},
+        {"revision_id": identity.revision_id},
     )
     await connection.execute(text("DELETE FROM cpsc_current_records"))
     await connection.execute(
@@ -363,7 +354,7 @@ async def _promote_revision(
             "ON versions.version_id = records.version_id "
             "WHERE records.revision_id = :revision_id"
         ),
-        {"revision_id": revision_id},
+        {"revision_id": identity.revision_id},
     )
     await connection.execute(
         text(
@@ -373,7 +364,7 @@ async def _promote_revision(
         ),
         {
             "record_count": record_count,
-            "run_id": run_id,
+            "run_id": identity.run_id,
         },
     )
     return reused_count
@@ -388,15 +379,13 @@ async def import_cpsc_fixture(
     source_url: str = CPSC_RECALL_API_URL,
 ) -> ImportResult | RejectedImport | FailedImport:
     raw_response = fixture_path.read_bytes()
-    run_id = uuid4()
-    revision_id = uuid4()
+    identity = RevisionIdentity(run_id=uuid4(), revision_id=uuid4())
     engine = create_async_engine(database_url)
     try:
         async with engine.begin() as connection:
             await _start_revision(
                 connection,
-                run_id=run_id,
-                revision_id=revision_id,
+                identity=identity,
                 source_url=source_url,
                 observed_at=observed_at,
                 raw_response=raw_response,
@@ -407,33 +396,35 @@ async def import_cpsc_fixture(
             )
         except SourceValidationError as error:
             async with engine.begin() as connection:
-                await _reject_revision(
+                await _finish_unsuccessful_revision(
                     connection,
-                    run_id=run_id,
-                    revision_id=revision_id,
+                    identity=identity,
+                    state=RevisionState.REJECTED,
                     error_code=str(error),
                 )
-            return RejectedImport(revision_id=revision_id, error_code=str(error))
+            return RejectedImport(
+                revision_id=identity.revision_id, error_code=str(error)
+            )
 
         try:
             async with engine.begin() as connection:
                 reused_count = await _promote_revision(
                     connection,
-                    run_id=run_id,
-                    revision_id=revision_id,
+                    identity=identity,
                     records=records,
                     observed_at=observed_at,
                 )
         except SQLAlchemyError:
             async with engine.begin() as connection:
-                await _fail_revision(
+                await _finish_unsuccessful_revision(
                     connection,
-                    run_id=run_id,
-                    revision_id=revision_id,
+                    identity=identity,
+                    state=RevisionState.FAILED,
+                    error_code="promotion_failed",
                 )
-            return FailedImport(revision_id=revision_id)
+            return FailedImport(revision_id=identity.revision_id)
         return ImportResult(
-            revision_id=revision_id,
+            revision_id=identity.revision_id,
             record_count=len(records),
             reused_version_count=reused_count,
             content_hashes=tuple(record.content_hash for record in records),
