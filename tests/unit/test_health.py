@@ -1,3 +1,4 @@
+import errno
 import io
 import json
 import logging
@@ -103,6 +104,29 @@ def test_json_logs_redact_arbitrary_messages() -> None:
     output = JsonFormatter().format(record)
 
     assert json.loads(output)["message"] == "<redacted>"
+    assert "submitted-secret" not in output
+
+
+def test_json_logs_name_address_in_use_without_exposing_details() -> None:
+    record = logging.LogRecord(
+        name="uvicorn.error",
+        level=logging.ERROR,
+        pathname=__file__,
+        lineno=1,
+        msg=OSError(errno.EADDRINUSE, "submitted-secret"),
+        args=(),
+        exc_info=None,
+    )
+
+    output = JsonFormatter().format(record)
+
+    assert json.loads(output) == {
+        "event": "address_in_use",
+        "exception_type": "OSError",
+        "level": "ERROR",
+        "logger": "uvicorn.error",
+        "message": "<redacted>",
+    }
     assert "submitted-secret" not in output
 
 

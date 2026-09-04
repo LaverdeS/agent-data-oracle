@@ -1,3 +1,4 @@
+import errno
 import json
 import logging
 import sys
@@ -38,6 +39,10 @@ class JsonFormatter(logging.Formatter):
                 if hasattr(record, field)
             }
         )
+        if isinstance(record.msg, OSError):
+            event["exception_type"] = type(record.msg).__name__
+            if record.msg.errno == errno.EADDRINUSE:
+                event["event"] = "address_in_use"
         if record.exc_info is not None:
             exception_type = record.exc_info[0]
             event["exception_type"] = (
