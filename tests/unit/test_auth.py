@@ -6,7 +6,10 @@ from urllib.request import Request
 
 import pytest
 
-from agent_data_oracle.auth import GmailApiEmailProvider
+from agent_data_oracle.auth import (
+    GmailApiEmailProvider,
+    email_provider_from_environment,
+)
 from agent_data_oracle.config import auth_secret_from_environment
 
 
@@ -59,3 +62,12 @@ def test_production_requires_a_stable_authentication_secret(
 
     with pytest.raises(RuntimeError, match="AUTH_SECRET"):
         auth_secret_from_environment()
+
+
+def test_production_selects_gmail_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("GMAIL_API_ACCESS_TOKEN", "runtime-secret")
+
+    provider = email_provider_from_environment()
+
+    assert isinstance(provider, GmailApiEmailProvider)

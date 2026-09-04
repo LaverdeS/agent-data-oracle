@@ -3,12 +3,13 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
@@ -16,14 +17,17 @@ from agent_data_oracle.auth import (
     AuthenticatedOperator,
     EmailProvider,
     HumanAccess,
-    LocalCaptureEmailProvider,
+    SecondFactorResult,
+    email_provider_from_environment,
     utc_now,
 )
 from agent_data_oracle.config import (
     auth_secret_from_environment,
     database_url_from_environment,
     founder_emails_from_environment,
+    public_origin_from_environment,
     secure_cookies_from_environment,
+    validated_public_origin,
 )
 from agent_data_oracle.database import Database
 from agent_data_oracle.observability import request_log_fields
@@ -52,6 +56,7 @@ def create_app(
     auth_secret: bytes | None = None,
     email_provider: EmailProvider | None = None,
     clock: Callable[[], datetime] = utc_now,
+    public_origin: str | None = None,
     secure_cookies: bool | None = None,
     founder_emails: frozenset[str] | None = None,
 ) -> FastAPI:
@@ -59,7 +64,11 @@ def create_app(
     human_access = HumanAccess(
         database=database,
         secret=auth_secret or auth_secret_from_environment(),
-        email_provider=email_provider or LocalCaptureEmailProvider(),
+        email_provider=(
+            email_provider
+            if email_provider is not None
+            else email_provider_from_environment()
+        ),
         clock=clock,
         founder_emails=founder_emails or founder_emails_from_environment(),
     )
@@ -68,6 +77,11 @@ def create_app(
         if secure_cookies is not None
         else secure_cookies_from_environment()
     )
+    sign_in_origin = (
+        validated_public_origin(public_origin, require_https=use_secure_cookies)
+        if public_origin is not None
+        else public_origin_from_environment()
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -75,6 +89,14 @@ def create_app(
         await database.close()
 
     app = FastAPI(title="Agent Data Oracle", lifespan=lifespan)
+    if public_origin is not None or secure_cookies_from_environment():
+        trusted_hostname = urlsplit(sign_in_origin).hostname
+        if trusted_hostname is None:
+            raise ValueError("PUBLIC_ORIGIN must include a hostname")
+        app.add_middleware(
+            TrustedHostMiddleware,
+            allowed_hosts=[trusted_hostname],
+        )
     app.state.database = database
     app.state.human_access = human_access
 
@@ -109,6 +131,11 @@ def create_app(
             request.cookies.get("ado_session")
         )
 
+    def csrf_is_valid(request: Request, fields: Mapping[str, str]) -> bool:
+        return human_access.csrf_token_is_valid(
+            request.cookies.get("ado_csrf"), fields.get("csrf_token")
+        )
+
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request) -> Response:
         return templates.TemplateResponse(request, "index.html")
@@ -120,9 +147,7 @@ def create_app(
     @app.post("/auth/sign-in", response_class=HTMLResponse, status_code=202)
     async def request_sign_in(request: Request) -> Response:
         fields = await _form_fields(request)
-        if not human_access.csrf_token_is_valid(
-            request.cookies.get("ado_csrf"), fields.get("csrf_token")
-        ):
+        if not csrf_is_valid(request, fields):
             return HTMLResponse("Invalid request token", status_code=403)
         network_identity = (
             request.client.host if request.client is not None else "unknown"
@@ -130,7 +155,7 @@ def create_app(
         await human_access.request_sign_in(
             email=fields.get("email", ""),
             network_identity=network_identity,
-            base_url=str(request.base_url).rstrip("/"),
+            base_url=sign_in_origin,
         )
         return templates.TemplateResponse(
             request, "sign_in_requested.html", status_code=202
@@ -143,9 +168,7 @@ def create_app(
     @app.post("/auth/verify", response_class=HTMLResponse)
     async def verify_sign_in(request: Request) -> Response:
         fields = await _form_fields(request)
-        if not human_access.csrf_token_is_valid(
-            request.cookies.get("ado_csrf"), fields.get("csrf_token")
-        ):
+        if not csrf_is_valid(request, fields):
             return HTMLResponse("Invalid request token", status_code=403)
         grant = await human_access.consume_sign_in_token(fields.get("token", ""))
         if grant is None:
@@ -177,19 +200,25 @@ def create_app(
         operator = await authenticated_operator(request)
         if operator is None:
             return RedirectResponse("/sign-in", status_code=303)
+        if operator.operator_type is not None:
+            return RedirectResponse("/app", status_code=303)
+        if not human_access.reauthentication_is_current(operator):
+            return RedirectResponse("/sign-in", status_code=303)
         return response_with_csrf(request, "declare.html", {"error": False})
 
     @app.post("/declare", response_class=HTMLResponse)
     async def record_declaration(request: Request) -> Response:
         fields = await _form_fields(request)
         session_token = request.cookies.get("ado_session")
-        if not human_access.csrf_token_is_valid(
-            request.cookies.get("ado_csrf"), fields.get("csrf_token")
-        ):
+        if not csrf_is_valid(request, fields):
             return HTMLResponse("Invalid request token", status_code=403)
         operator = await authenticated_operator(request)
         sells_value = fields.get("sells_into_us")
         if operator is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if operator.operator_type is not None:
+            return RedirectResponse("/app", status_code=303)
+        if not human_access.reauthentication_is_current(operator):
             return RedirectResponse("/sign-in", status_code=303)
         if session_token is None or sells_value not in {"yes", "no"}:
             return response_with_csrf(request, "declare.html", {"error": True})
@@ -240,9 +269,7 @@ def create_app(
     async def confirm_founder_totp_enrollment(request: Request) -> Response:
         fields = await _form_fields(request)
         session_token = request.cookies.get("ado_session")
-        if not human_access.csrf_token_is_valid(
-            request.cookies.get("ado_csrf"), fields.get("csrf_token")
-        ):
+        if not csrf_is_valid(request, fields):
             return HTMLResponse("Invalid request token", status_code=403)
         if session_token is None:
             return RedirectResponse("/sign-in", status_code=303)
@@ -280,32 +307,34 @@ def create_app(
     async def verify_founder_totp(request: Request) -> Response:
         fields = await _form_fields(request)
         session_token = request.cookies.get("ado_session")
-        if not human_access.csrf_token_is_valid(
-            request.cookies.get("ado_csrf"), fields.get("csrf_token")
-        ):
+        if not csrf_is_valid(request, fields):
             return HTMLResponse("Invalid request token", status_code=403)
         if session_token is None:
             return HTMLResponse("Not found", status_code=404)
-        verified = await human_access.verify_founder_second_factor(
+        result = await human_access.verify_founder_second_factor(
             session_token=session_token,
             credential=fields.get("credential", ""),
         )
-        if not verified:
-            return response_with_csrf(
+        if result is not SecondFactorResult.VERIFIED:
+            response = response_with_csrf(
                 request,
                 "totp_challenge.html",
-                {"error": True},
-                status_code=403,
+                {
+                    "error": result is SecondFactorResult.INVALID,
+                    "rate_limited": result is SecondFactorResult.RATE_LIMITED,
+                },
+                status_code=(429 if result is SecondFactorResult.RATE_LIMITED else 403),
             )
+            if result is SecondFactorResult.RATE_LIMITED:
+                response.headers["Retry-After"] = "900"
+            return response
         return RedirectResponse("/founder", status_code=303)
 
     @app.post("/auth/sign-out")
     async def sign_out(request: Request) -> Response:
         fields = await _form_fields(request)
         session_token = request.cookies.get("ado_session")
-        if not human_access.csrf_token_is_valid(
-            request.cookies.get("ado_csrf"), fields.get("csrf_token")
-        ):
+        if not csrf_is_valid(request, fields):
             return HTMLResponse("Invalid request token", status_code=403)
         if session_token is not None:
             await human_access.revoke_session(session_token)

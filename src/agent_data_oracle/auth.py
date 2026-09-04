@@ -3,6 +3,7 @@ import base64
 import hashlib
 import hmac
 import logging
+import os
 import secrets
 import struct
 import urllib.request
@@ -10,6 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
+from enum import StrEnum
 from typing import Protocol
 from uuid import UUID, uuid4
 
@@ -44,6 +46,12 @@ class AuthenticatedOperator:
     is_founder: bool
     reauthenticated_at: datetime
     founder_second_factor_at: datetime | None
+
+
+class SecondFactorResult(StrEnum):
+    VERIFIED = "verified"
+    INVALID = "invalid"
+    RATE_LIMITED = "rate_limited"
 
 
 class EmailProvider(Protocol):
@@ -93,6 +101,15 @@ class GmailApiEmailProvider:
                     raise RuntimeError("gmail_delivery_failed")
 
         await asyncio.to_thread(send)
+
+
+def email_provider_from_environment() -> EmailProvider:
+    if os.environ.get("APP_ENV", "local").casefold() in {"local", "test"}:
+        return LocalCaptureEmailProvider()
+    access_token = os.environ.get("GMAIL_API_ACCESS_TOKEN")
+    if access_token is None:
+        raise RuntimeError("GMAIL_API_ACCESS_TOKEN is required outside local/test")
+    return GmailApiEmailProvider(lambda: access_token)
 
 
 def utc_now() -> datetime:
@@ -370,16 +387,24 @@ class HumanAccess:
                     "sells_into_us = :sells_into_us, declaration_recorded_at = :now "
                     "WHERE operator_id = (SELECT operator_id FROM browser_sessions "
                     "WHERE token_hash = :token_hash AND revoked_at IS NULL "
-                    "AND expires_at > :now) RETURNING operator_id"
+                    "AND expires_at > :now "
+                    "AND reauthenticated_at > :reauthenticated_after) "
+                    "AND declaration_recorded_at IS NULL RETURNING operator_id"
                 ),
                 {
                     "now": now,
                     "operator_type": operator_type,
+                    "reauthenticated_after": now - REAUTHENTICATION_LIFETIME,
                     "sells_into_us": sells_into_us,
                     "token_hash": self._digest("session", session_token),
                 },
             )
         return isinstance(updated, UUID)
+
+    def reauthentication_is_current(self, operator: AuthenticatedOperator) -> bool:
+        return self._clock() - operator.reauthenticated_at <= (
+            REAUTHENTICATION_LIFETIME
+        )
 
     async def revoke_session(self, session_token: str) -> None:
         now = self._clock()
@@ -498,14 +523,44 @@ class HumanAccess:
 
     async def verify_founder_second_factor(
         self, *, session_token: str, credential: str
-    ) -> bool:
+    ) -> SecondFactorResult:
         operator = await self.authenticated_operator(session_token)
         if operator is None or not operator.is_founder:
-            return False
+            return SecondFactorResult.INVALID
         now = self._clock()
-        verified = self._totp_is_valid(operator.operator_id, credential)
-        used_recovery_id: UUID | None = None
+        attempt_subject = self._digest("factor-session", session_token)
         async with self._database.transaction() as connection:
+            await connection.execute(
+                text(
+                    "SELECT pg_advisory_xact_lock(hashtextextended(:subject_hash, 0))"
+                ),
+                {"subject_hash": attempt_subject},
+            )
+            attempts = await connection.scalar(
+                text(
+                    "SELECT count(*) FROM auth_attempts "
+                    "WHERE subject_kind = 'factor_session' "
+                    "AND subject_hash = :subject_hash "
+                    "AND attempted_at > :window_start"
+                ),
+                {
+                    "subject_hash": attempt_subject,
+                    "window_start": now - timedelta(minutes=15),
+                },
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO auth_attempts "
+                    "(subject_kind, subject_hash, attempted_at) "
+                    "VALUES ('factor_session', :subject_hash, :attempted_at)"
+                ),
+                {"attempted_at": now, "subject_hash": attempt_subject},
+            )
+            if not isinstance(attempts, int) or attempts >= 5:
+                return SecondFactorResult.RATE_LIMITED
+
+            verified = self._totp_is_valid(operator.operator_id, credential)
+            used_recovery_id: UUID | None = None
             if not verified:
                 rows = (
                     await connection.execute(
@@ -523,7 +578,7 @@ class HumanAccess:
                         used_recovery_id = row.recovery_code_id
                         verified = True
             if not verified:
-                return False
+                return SecondFactorResult.INVALID
             if used_recovery_id is not None:
                 updated = await connection.scalar(
                     text(
@@ -534,7 +589,7 @@ class HumanAccess:
                     {"code_id": used_recovery_id, "now": now},
                 )
                 if updated is None:
-                    return False
+                    return SecondFactorResult.INVALID
             await connection.execute(
                 text(
                     "UPDATE browser_sessions SET founder_second_factor_at = :now "
@@ -543,4 +598,4 @@ class HumanAccess:
                 ),
                 {"now": now, "token_hash": self._digest("session", session_token)},
             )
-        return True
+        return SecondFactorResult.VERIFIED

@@ -64,6 +64,7 @@ async def test_sign_in_request_is_generic_and_delivers_a_single_use_link(
         auth_secret=b"test-secret-that-is-long-enough",
         email_provider=email,
         clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
         secure_cookies=True,
     )
 
@@ -102,6 +103,7 @@ async def test_single_use_link_creates_session_and_records_operator_declaration(
         auth_secret=b"test-secret-that-is-long-enough",
         email_provider=email,
         clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
         secure_cookies=True,
     )
 
@@ -209,6 +211,7 @@ async def test_founder_requires_totp_and_receives_one_time_recovery_codes(
         auth_secret=b"test-secret-that-is-long-enough",
         email_provider=email,
         clock=lambda: now,
+        public_origin="https://test",
         secure_cookies=True,
         founder_emails=frozenset({"founder@example.com"}),
     )
@@ -288,6 +291,7 @@ async def test_login_and_session_expiry_rejection_and_revocation(
         auth_secret=b"test-secret-that-is-long-enough",
         email_provider=email,
         clock=clock,
+        public_origin="https://test",
         secure_cookies=True,
     )
 
@@ -382,6 +386,7 @@ async def test_sign_in_abuse_controls_do_not_retain_network_address(
         auth_secret=b"test-secret-that-is-long-enough",
         email_provider=email,
         clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
         secure_cookies=True,
     )
 
@@ -438,6 +443,7 @@ async def test_email_provider_failure_keeps_the_sign_in_response_generic(
         auth_secret=b"test-secret-that-is-long-enough",
         email_provider=FailingEmailProvider(),
         clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
         secure_cookies=True,
     )
 
@@ -458,3 +464,160 @@ async def test_email_provider_failure_keeps_the_sign_in_response_generic(
 
     assert response.status_code == 202
     assert "If the address can receive sign-in email" in response.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_sign_in_links_use_the_configured_origin_not_the_request_host(
+    postgres_url: str, access_database: None
+) -> None:
+    del access_database
+    email = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email,
+        clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://evidence.example",
+        secure_cookies=True,
+    )
+
+    async with app.router.lifespan_context(app):
+        client = AsyncClient(
+            transport=ASGITransport(app=app), base_url="https://evidence.example"
+        )
+        sign_in = await client.get("/sign-in")
+        await client.post(
+            "/auth/sign-in",
+            data={
+                "email": "operator@example.com",
+                "csrf_token": sign_in.cookies["ado_csrf"],
+            },
+        )
+        await client.aclose()
+
+        attacker = AsyncClient(
+            transport=ASGITransport(app=app), base_url="https://attacker.example"
+        )
+        rejected_host = await attacker.get("/sign-in")
+        await attacker.aclose()
+
+    assert email.deliveries[0].sign_in_url.startswith(
+        "https://evidence.example/auth/verify?token="
+    )
+    assert rejected_host.status_code == 400
+    assert len(email.deliveries) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_declaration_requires_recent_email_verification_and_is_immutable(
+    postgres_url: str, access_database: None
+) -> None:
+    del access_database
+    clock = MutableClock(datetime(2026, 9, 4, 10, 0, tzinfo=UTC))
+    email = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email,
+        clock=clock,
+        public_origin="https://test",
+        secure_cookies=True,
+    )
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as client,
+    ):
+        await verify_login(client, await request_login(client, email))
+        clock.advance(timedelta(minutes=16))
+        stale_declaration = await client.get("/declare")
+
+        client.cookies.clear()
+        await verify_login(client, await request_login(client, email))
+        declaration = await client.get("/declare")
+        await client.post(
+            "/declare",
+            data={
+                "operator_type": "business_operator",
+                "sells_into_us": "yes",
+                "csrf_token": declaration.cookies["ado_csrf"],
+            },
+        )
+        repeated = await client.get("/declare")
+
+    assert stale_declaration.status_code == 303
+    assert stale_declaration.headers["location"] == "/sign-in"
+    assert repeated.status_code == 303
+    assert repeated.headers["location"] == "/app"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_founder_second_factor_attempts_are_bounded_per_session(
+    postgres_url: str, access_database: None
+) -> None:
+    del access_database
+    now = datetime(2026, 9, 4, 10, 0, tzinfo=UTC)
+    email = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email,
+        clock=lambda: now,
+        public_origin="https://test",
+        secure_cookies=True,
+        founder_emails=frozenset({"founder@example.com"}),
+    )
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as client,
+    ):
+        await verify_login(client, await request_login(client, email))
+        enrollment = await client.get("/founder/totp/enroll")
+        secret_match = re.search(r'data-totp-secret="([A-Z2-7]+)"', enrollment.text)
+        assert secret_match is not None
+        secret = secret_match.group(1)
+        await client.post(
+            "/founder/totp/enroll",
+            data={
+                "code": totp_code(secret, now),
+                "csrf_token": enrollment.cookies["ado_csrf"],
+            },
+        )
+
+        client.cookies.clear()
+        await verify_login(client, await request_login(client, email))
+        await client.get("/founder/totp")
+        failures = []
+        for _ in range(5):
+            failures.append(
+                await client.post(
+                    "/founder/totp",
+                    data={
+                        "credential": "000000",
+                        "csrf_token": client.cookies["ado_csrf"],
+                    },
+                )
+            )
+        bounded = await client.post(
+            "/founder/totp",
+            data={
+                "credential": totp_code(secret, now),
+                "csrf_token": client.cookies["ado_csrf"],
+            },
+        )
+
+    assert all(response.status_code == 403 for response in failures)
+    assert bounded.status_code == 429
+    assert bounded.headers["retry-after"] == "900"

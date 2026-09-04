@@ -5,6 +5,7 @@
   <p class="quiet">Founder-only security</p>
   <h1>Verify your second factor</h1>
   {% if error %}<p class="error">That authenticator or recovery code could not be verified.</p>{% endif %}
+  {% if rate_limited %}<p class="error">Too many attempts. Try again in 15 minutes or request a new email sign-in.</p>{% endif %}
   <form method="post" action="/founder/totp">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label for="credential">Authenticator or recovery code</label>

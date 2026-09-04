@@ -38,7 +38,9 @@ def upgrade() -> None:
 
         CREATE TABLE auth_attempts (
             attempt_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-            subject_kind text NOT NULL CHECK (subject_kind IN ('email', 'network')),
+            subject_kind text NOT NULL CHECK (
+                subject_kind IN ('email', 'network', 'factor_session')
+            ),
             subject_hash character(64) NOT NULL,
             attempted_at timestamptz NOT NULL
         );

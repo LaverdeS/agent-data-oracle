@@ -1,5 +1,6 @@
 import os
 import secrets
+from urllib.parse import urlsplit
 
 LOCAL_DATABASE_URL = (
     "postgresql+psycopg://postgres:postgres@127.0.0.1:54329/agent_data_oracle_test"
@@ -28,4 +29,34 @@ def founder_emails_from_environment() -> frozenset[str]:
         value.strip().casefold()
         for value in os.environ.get("FOUNDER_EMAILS", "").split(",")
         if value.strip()
+    )
+
+
+def validated_public_origin(value: str, *, require_https: bool) -> str:
+    origin = value.rstrip("/")
+    parsed = urlsplit(origin)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError("PUBLIC_ORIGIN must be an HTTP(S) origin without a path")
+    if require_https and parsed.scheme != "https":
+        raise ValueError("PUBLIC_ORIGIN must use HTTPS outside local/test")
+    return origin
+
+
+def public_origin_from_environment() -> str:
+    environment = os.environ.get("APP_ENV", "local").casefold()
+    configured = os.environ.get("PUBLIC_ORIGIN")
+    if configured is None:
+        if environment not in {"local", "test"}:
+            raise RuntimeError("PUBLIC_ORIGIN is required outside local/test")
+        return "http://127.0.0.1:8080"
+    return validated_public_origin(
+        configured, require_https=environment not in {"local", "test"}
     )
