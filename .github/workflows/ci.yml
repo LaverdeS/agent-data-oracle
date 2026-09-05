@@ -62,3 +62,15 @@ jobs:
           fetch-depth: 0
       - name: Scan repository history for secrets
         run: docker compose --profile tools run --rm gitleaks
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Check Terraform formatting
+        run: terraform -chdir=infra/terraform fmt -check -recursive
+      - name: Validate infrastructure definitions
+        run: |
+          terraform -chdir=infra/terraform init -backend=false
+          terraform -chdir=infra/terraform validate
