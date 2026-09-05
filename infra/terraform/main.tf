@@ -123,7 +123,7 @@ resource "google_sql_database_instance" "primary" {
 
     ip_configuration {
       ipv4_enabled = true
-      require_ssl  = true
+      ssl_mode     = "ENCRYPTED_ONLY"
     }
 
     backup_configuration {
