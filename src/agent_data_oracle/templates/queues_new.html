@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}New evidence queue · Agent Data Oracle{% endblock %}
+{% block navigation %}<a href="/app">Your queues</a>{% endblock %}
+{% block content %}
+  <p class="quiet">Evidence-queue submission</p>
+  <h1>Check typed product identifiers</h1>
+  <p class="lede">Submit up to 50 explicit UPC, model, or brand values. Do not submit URLs, page text, files, or catalogue data.</p>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="post" action="/queues">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+    {% for row in range(50) %}
+      <fieldset>
+        <legend>Identifier {{ row + 1 }}</legend>
+        <label for="identifier-type-{{ row }}">Type</label>
+        <select id="identifier-type-{{ row }}" name="identifier_type">
+          <option value="upc">UPC</option>
+          <option value="model">Model</option>
+          <option value="brand">Brand</option>
+        </select>
+        <label for="identifier-value-{{ row }}">Exact submitted value</label>
+        <input id="identifier-value-{{ row }}" type="text" name="identifier_value" maxlength="512"{% if row == 0 %} required{% endif %}>
+      </fieldset>
+    {% endfor %}
+    <label><input type="checkbox" name="authorization" value="authorized" required> I am authorized to submit these identifier values for this evidence queue.</label>
+    <p><button type="submit">Create evidence queue</button></p>
+  </form>
+{% endblock %}

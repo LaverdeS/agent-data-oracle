@@ -14,6 +14,12 @@
     <p>{% if operator.sells_into_us %}Products sold into the United States{% else %}Products not sold into the United States{% endif %}</p>
     <p class="quiet">This declaration does not verify your legal business status.</p>
   </div>
-  <p>The first evidence-queue submission flow arrives in ticket #23.</p>
+  <p><a class="button" href="/queues/new">Create an evidence queue</a></p>
+  {% if evaluations %}
+    <h2>Released evidence queues</h2>
+    <ul>{% for evaluation in evaluations %}<li><a href="/queues/{{ evaluation.evaluation_id }}">No-candidate queue from {{ evaluation.evaluated_at.isoformat() }}</a></li>{% endfor %}</ul>
+  {% else %}
+    <p>No released evidence queues yet.</p>
+  {% endif %}
   {% if operator.is_founder %}<p><a class="button" href="/founder">Founder controls</a></p>{% endif %}
 {% endblock %}

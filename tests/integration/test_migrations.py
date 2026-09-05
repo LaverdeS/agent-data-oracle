@@ -33,4 +33,4 @@ async def test_migrations_apply_to_postgresql(postgres_url: str) -> None:
         await engine.dispose()
 
     assert result.returncode == 0, result.stderr
-    assert revision == "0005"
+    assert revision == "0006"

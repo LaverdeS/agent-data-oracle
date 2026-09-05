@@ -1,10 +1,11 @@
 import logging
+import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
@@ -30,6 +31,14 @@ from agent_data_oracle.config import (
     validated_public_origin,
 )
 from agent_data_oracle.database import Database
+from agent_data_oracle.evidence_queue import (
+    EvidenceQueues,
+    IdempotencyConflictError,
+    SourceUnavailableError,
+    SubmissionError,
+    serialize_evidence_contract,
+    submitted_identifiers_from_form,
+)
 from agent_data_oracle.observability import request_log_fields
 
 request_logger = logging.getLogger("agent_data_oracle.http")
@@ -48,6 +57,16 @@ async def _form_fields(request: Request) -> Mapping[str, str]:
         return {}
     values = parse_qs(body.decode("utf-8", errors="replace"), keep_blank_values=True)
     return {key: entries[0] for key, entries in values.items() if entries}
+
+
+async def _form_values(request: Request) -> tuple[dict[str, list[str]], bool]:
+    body = await request.body()
+    if len(body) > 8_192:
+        return {}, False
+    return (
+        parse_qs(body.decode("utf-8", errors="replace"), keep_blank_values=True),
+        True,
+    )
 
 
 def create_app(
@@ -72,6 +91,7 @@ def create_app(
         clock=clock,
         founder_emails=founder_emails or founder_emails_from_environment(),
     )
+    evidence_queues = EvidenceQueues(database, clock=clock)
     use_secure_cookies = (
         secure_cookies
         if secure_cookies is not None
@@ -99,6 +119,7 @@ def create_app(
         )
     app.state.database = database
     app.state.human_access = human_access
+    app.state.evidence_queues = evidence_queues
 
     def response_with_csrf(
         request: Request,
@@ -238,7 +259,92 @@ def create_app(
             return RedirectResponse("/sign-in", status_code=303)
         if operator.operator_type is None:
             return RedirectResponse("/declare", status_code=303)
-        return response_with_csrf(request, "app.html", {"operator": operator})
+        evaluations = await evidence_queues.list_released(
+            operator_id=operator.operator_id
+        )
+        return response_with_csrf(
+            request,
+            "app.html",
+            {"evaluations": evaluations, "operator": operator},
+        )
+
+    def new_queue_form(
+        request: Request, *, error: str | None = None, status_code: int = 200
+    ) -> Response:
+        idempotency_key = secrets.token_urlsafe(24)
+        response = response_with_csrf(
+            request,
+            "queues_new.html",
+            {"error": error, "idempotency_key": idempotency_key},
+            status_code=status_code,
+        )
+        response.headers["X-Idempotency-Key"] = idempotency_key
+        return response
+
+    @app.get("/queues/new", response_class=HTMLResponse)
+    async def new_evidence_queue(request: Request) -> Response:
+        operator = await authenticated_operator(request)
+        if operator is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if operator.operator_type is None:
+            return RedirectResponse("/declare", status_code=303)
+        return new_queue_form(request)
+
+    @app.post("/queues", response_class=HTMLResponse)
+    async def submit_evidence_queue(request: Request) -> Response:
+        values, body_is_within_limit = await _form_values(request)
+        fields = {key: entries[0] for key, entries in values.items() if entries}
+        if not csrf_is_valid(request, fields):
+            return HTMLResponse("Invalid request token", status_code=403)
+        operator = await authenticated_operator(request)
+        if operator is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if operator.operator_type is None:
+            return RedirectResponse("/declare", status_code=303)
+        try:
+            identifiers = submitted_identifiers_from_form(
+                values, body_is_within_limit=body_is_within_limit
+            )
+            evaluation = await evidence_queues.submit_no_candidate_evaluation(
+                operator_id=operator.operator_id,
+                idempotency_key=fields.get("idempotency_key", ""),
+                identifiers=identifiers,
+            )
+        except SubmissionError as error:
+            return new_queue_form(request, error=str(error), status_code=400)
+        except IdempotencyConflictError:
+            return new_queue_form(
+                request,
+                error="This submission token was already used for different input.",
+                status_code=409,
+            )
+        except (SourceUnavailableError, SQLAlchemyError):
+            return HTMLResponse(
+                "Evidence evaluation is temporarily unavailable.", status_code=503
+            )
+        return RedirectResponse(f"/queues/{evaluation.evaluation_id}", status_code=303)
+
+    @app.get("/queues/{evaluation_id}", response_class=HTMLResponse)
+    async def evidence_queue(request: Request, evaluation_id: str) -> Response:
+        operator = await authenticated_operator(request)
+        if operator is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if operator.operator_type is None:
+            return RedirectResponse("/declare", status_code=303)
+        try:
+            parsed_evaluation_id = UUID(evaluation_id)
+        except ValueError:
+            return HTMLResponse("Not found", status_code=404)
+        queue = await evidence_queues.released_contract(
+            operator_id=operator.operator_id, evaluation_id=parsed_evaluation_id
+        )
+        if queue is None:
+            return HTMLResponse("Not found", status_code=404)
+        return templates.TemplateResponse(
+            request,
+            "queue.html",
+            {"evidence": serialize_evidence_contract(queue)},
+        )
 
     @app.get("/founder")
     async def founder_controls(request: Request) -> Response:

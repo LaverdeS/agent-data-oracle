@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Evidence queue · Agent Data Oracle{% endblock %}
+{% block navigation %}<a href="/app">Your queues</a>{% endblock %}
+{% block content %}
+  <p class="quiet">Released immutable evidence queue</p>
+  <h1>No candidate recall-to-listing action records</h1>
+  <p class="lede">No candidate recall-to-listing action records were found using the recorded CPSC revision and deterministic matcher version.</p>
+  <div class="card warning">
+    {% for limitation in evidence.limitations %}<p>{{ limitation }}</p>{% endfor %}
+  </div>
+  <h2>Submitted identifiers</h2>
+  <ul>{% for identifier in evidence.inputs %}<li><strong>{{ identifier.type }}</strong>: {{ identifier.literal }}</li>{% endfor %}</ul>
+  <dl>
+    <dt>Evaluated at</dt><dd>{{ evidence.evaluated_at }}</dd>
+    <dt>CPSC source revision</dt><dd>{{ evidence.source_revision_id }}</dd>
+    <dt>Normalization version</dt><dd>{{ evidence.normalization_version }}</dd>
+    <dt>Matcher version</dt><dd>{{ evidence.matcher_version }}</dd>
+  </dl>
+{% endblock %}
