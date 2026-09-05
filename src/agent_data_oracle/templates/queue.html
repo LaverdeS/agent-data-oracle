@@ -3,8 +3,31 @@
 {% block navigation %}<a href="/app">Your queues</a>{% endblock %}
 {% block content %}
   <p class="quiet">Released immutable evidence queue</p>
+  {% if evidence.outcome == "candidates" %}
+  <h1>Possible recall-to-listing action records</h1>
+  <p class="lede">These deterministic CPSC matches are prompts for human review, not product verdicts.</p>
+  {% for candidate in evidence.candidates %}
+  <section class="card">
+    <h2>{{ candidate.candidate_class.replace('_', ' ') }}</h2>
+    <p><strong>Recall {{ candidate.recall_number }}</strong> · <a href="{{ candidate.official_url }}">Official CPSC notice</a></p>
+    <p><strong>Submitted identifier:</strong> {{ candidate.submitted_identifier.type }}: {{ candidate.submitted_identifier.literal }}</p>
+    <h3>Match basis</h3>
+    <ul>{% for basis in candidate.match_bases %}<li>{{ basis.field }}: {{ basis.literal }}{% if basis.identity_limit %} — {{ basis.identity_limit }}{% endif %}</li>{% endfor %}</ul>
+    <h3>Affected-product evidence</h3>
+    <p>{{ candidate.affected_product_evidence.description }}</p>
+    <p><strong>Scope constraints:</strong> {{ candidate.constraints.scope }}{% if candidate.constraints.source_literal %} — {{ candidate.constraints.source_literal }}{% endif %}</p>
+    <dl>
+      <dt>Recall date</dt><dd>{{ candidate.recall_date }}</dd>
+      <dt>Source publication time</dt><dd>{{ candidate.last_publish_date }}</dd>
+      <dt>Source observed at</dt><dd>{{ candidate.source_observed_at }}</dd>
+      <dt>Source revision completed at</dt><dd>{{ candidate.source_revision_completed_at }}</dd>
+    </dl>
+  </section>
+  {% endfor %}
+  {% else %}
   <h1>No candidate recall-to-listing action records</h1>
   <p class="lede">No candidate recall-to-listing action records were found using the recorded CPSC revision and deterministic matcher version.</p>
+  {% endif %}
   <div class="card warning">
     {% for limitation in evidence.limitations %}<p>{{ limitation }}</p>{% endfor %}
   </div>

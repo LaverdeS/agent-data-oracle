@@ -305,7 +305,7 @@ def create_app(
             identifiers = submitted_identifiers_from_form(
                 values, body_is_within_limit=body_is_within_limit
             )
-            evaluation = await evidence_queues.submit_no_candidate_evaluation(
+            evaluation = await evidence_queues.submit_evaluation(
                 operator_id=operator.operator_id,
                 idempotency_key=fields.get("idempotency_key", ""),
                 identifiers=identifiers,

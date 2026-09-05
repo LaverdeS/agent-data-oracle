@@ -170,6 +170,68 @@ async def test_operator_can_create_reopen_and_isolate_a_no_candidate_queue(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+async def test_operator_receives_source_linked_possible_candidate_evidence(
+    postgres_url: str, evidence_database: AsyncEngine
+) -> None:
+    import_completed_fixture(postgres_url)
+    email_provider = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email_provider,
+        clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
+        secure_cookies=True,
+    )
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as client,
+    ):
+        await sign_in_and_declare(client, email_provider, "operator@example.com")
+        form = await client.get("/queues/new")
+        submitted = await client.post(
+            "/queues",
+            content=urlencode(
+                [
+                    ("identifier_type", "model"),
+                    ("identifier_value", "HANS0002"),
+                    ("identifier_type", "brand"),
+                    ("identifier_value", "HARPPA"),
+                    ("authorization", "authorized"),
+                    ("idempotency_key", form.headers["x-idempotency-key"]),
+                    ("csrf_token", form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+        queue = await client.get(submitted.headers["location"])
+
+    assert submitted.status_code == 303
+    assert "Possible recall-to-listing action records" in queue.text
+    assert "MODEL No.: HANS0002" in queue.text
+    assert "26651" in queue.text
+    assert "Submitted identifier:</strong> model: HANS0002" in queue.text
+    assert "Brand equality alone is insufficient identity" in queue.text
+    assert "CPSC does not endorse this service" in queue.text
+    async with evidence_database.connect() as connection:
+        evidence_rows = await connection.scalar(
+            text("SELECT count(*) FROM evidence_rows")
+        )
+    assert evidence_rows == 2
+    with pytest.raises(DBAPIError):
+        async with evidence_database.begin() as connection:
+            await connection.execute(
+                text("UPDATE evidence_rows SET recall_number = 'changed'")
+            )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_queue_submission_rejects_unbounded_input_and_replays_only_same_input(
     postgres_url: str, evidence_database: AsyncEngine
 ) -> None:
