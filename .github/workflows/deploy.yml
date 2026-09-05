@@ -1,0 +1,77 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Immutable image tag to publish and deploy"
+        required: true
+        type: string
+
+permissions:
+  checks: read
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment: production
+    runs-on: ubuntu-latest
+    env:
+      REGION: europe-west3
+      REPOSITORY: agent-data-oracle
+      SERVICE: agent-data-oracle
+      MIGRATION_JOB: agent-data-oracle-migrate
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require the migration integration gate for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" \
+            --jq '.check_runs[] | select(.name == "Migration tests" and .conclusion == "success") | .id' \
+            | grep -q .
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Configure regional Artifact Registry access
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+      - name: Build and publish the immutable image
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          tagged_image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/web:${IMAGE_TAG}"
+          docker build --tag "$tagged_image" .
+          docker push "$tagged_image"
+          image="$(docker inspect --format='{{index .RepoDigests 0}}' "$tagged_image")"
+          test -n "$image"
+          echo "IMAGE=$image" >> "$GITHUB_ENV"
+      - name: Run the backward-compatible migration before serving the image
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          gcloud run jobs update "$MIGRATION_JOB" \
+            --project "$PROJECT_ID" --region "$REGION" --image "$IMAGE" --quiet
+          gcloud run jobs execute "$MIGRATION_JOB" \
+            --project "$PROJECT_ID" --region "$REGION" --wait
+      - name: Move Cloud Run traffic to the migrated image
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          gcloud run services update "$SERVICE" \
+            --project "$PROJECT_ID" --region "$REGION" --image "$IMAGE" --quiet
+      - name: Verify the deployed public shell and health endpoints
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          service_url="$(gcloud run services describe "$SERVICE" \
+            --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
+          scripts/smoke-deployed-shell.sh "$service_url"

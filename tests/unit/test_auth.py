@@ -3,6 +3,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from email import message_from_bytes
 from typing import Any
+from urllib.error import URLError
 from urllib.request import Request
 
 import pytest
@@ -54,6 +55,39 @@ async def test_gmail_provider_sends_the_sign_in_link_without_logging_it(
     message = message_from_bytes(base64.urlsafe_b64decode(body["raw"]))
     assert message["To"] == "operator@example.com"
     assert "one-time-secret" in message.get_payload()
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [URLError("temporary provider outage"), TimeoutError("temporary provider timeout")],
+)
+@pytest.mark.asyncio
+async def test_gmail_provider_retries_a_transient_delivery_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    failure: OSError,
+) -> None:
+    attempts = 0
+
+    def urlopen(request: Request, *, timeout: int) -> GmailResponse:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise failure
+        return GmailResponse()
+
+    async def no_wait(_: float) -> None:
+        return None
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr("agent_data_oracle.auth.asyncio.sleep", no_wait)
+    provider = GmailApiEmailProvider(lambda: "oauth-access-token")
+
+    await provider.send_sign_in_link(
+        recipient="operator@example.com",
+        sign_in_url="https://service.test/auth/verify?token=one-time-secret",
+    )
+
+    assert attempts == 2
 
 
 def test_production_requires_a_stable_authentication_secret(

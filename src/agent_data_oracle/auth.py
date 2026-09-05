@@ -15,6 +15,7 @@ from email.message import EmailMessage
 from enum import StrEnum
 from threading import Lock
 from typing import Protocol
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from uuid import UUID, uuid4
 
@@ -74,6 +75,8 @@ class LocalCaptureEmailProvider:
 class GmailApiEmailProvider:
     """Deliver sign-in links through Gmail's narrow send-message endpoint."""
 
+    _MAX_DELIVERY_ATTEMPTS = 3
+
     def __init__(self, access_token: Callable[[], str]) -> None:
         self._access_token = access_token
 
@@ -103,7 +106,22 @@ class GmailApiEmailProvider:
                 if response.status >= 300:
                     raise RuntimeError("gmail_delivery_failed")
 
-        await asyncio.to_thread(send)
+        for attempt in range(self._MAX_DELIVERY_ATTEMPTS):
+            try:
+                await asyncio.to_thread(send)
+                return
+            except (HTTPError, URLError, OSError) as error:
+                if not self._is_transient(error) or attempt == (
+                    self._MAX_DELIVERY_ATTEMPTS - 1
+                ):
+                    raise RuntimeError("gmail_delivery_failed") from error
+                await asyncio.sleep(0.25 * (2**attempt))
+
+    @staticmethod
+    def _is_transient(error: HTTPError | URLError | OSError) -> bool:
+        return (
+            not isinstance(error, HTTPError) or error.code == 429 or error.code >= 500
+        )
 
 
 def utc_now() -> datetime:
