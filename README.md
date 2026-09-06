@@ -74,6 +74,9 @@ rejects truncated fixture responses. Rejected input and failed promotion are
 recorded but never replace the current completed revision. The status output
 contains revision metadata and counts, not source payloads.
 
+For a reproducible local candidate-queue walkthrough after importing the
+fixture, see [View a local candidate queue](docs/local-candidate-queue-demo.md).
+
 ## Quality gates
 
 With the Compose database running:
