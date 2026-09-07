@@ -1,8 +1,11 @@
 import hashlib
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
+
+import pytest
 
 from agent_data_oracle.evidence_queue import (
     CandidateClass,
@@ -11,11 +14,15 @@ from agent_data_oracle.evidence_queue import (
     RecordMatch,
     SubmittedIdentifier,
     _source_constraints,
-    match_cpsc_record,
     normalize_identifier,
     serialize_evidence_contract,
 )
-from agent_data_oracle.frozen_matching import FROZEN_MATCHING_PAIRS
+from agent_data_oracle.frozen_matching import (
+    FROZEN_MATCHING_PAIRS,
+    FrozenCorpusError,
+    load_frozen_matching_pairs,
+    matching_report,
+)
 
 FIXTURE_DIRECTORY = Path("tests/fixtures/cpsc")
 
@@ -62,6 +69,8 @@ def test_frozen_matching_corpus_has_one_hundred_reviewed_pairs() -> None:
     assert all(
         pair.source.official_url in pair.review_note for pair in FROZEN_MATCHING_PAIRS
     )
+    assert all(pair.case_id.startswith("cpsc-") for pair in FROZEN_MATCHING_PAIRS)
+    assert len({pair.case_id for pair in FROZEN_MATCHING_PAIRS}) == 100
 
 
 def test_frozen_sources_are_bound_to_complete_retained_cpsc_payloads() -> None:
@@ -76,32 +85,53 @@ def test_frozen_sources_are_bound_to_complete_retained_cpsc_payloads() -> None:
         assert record["RecallNumber"] == source.recall_number.replace("-", "")
 
 
+def test_corpus_loader_rejects_a_fixture_hash_or_source_fact_mismatch(
+    tmp_path: Path,
+) -> None:
+    asset = json.loads(
+        Path("tests/fixtures/cpsc/frozen_matching_corpus.json").read_text()
+    )
+    asset["cases"][0]["fixture"]["sha256"] = "0" * 64
+    invalid_hash = tmp_path / "invalid-hash.json"
+    invalid_hash.write_text(json.dumps(asset))
+
+    with pytest.raises(FrozenCorpusError, match="hash"):
+        load_frozen_matching_pairs(invalid_hash)
+
+    asset = json.loads(
+        Path("tests/fixtures/cpsc/frozen_matching_corpus.json").read_text()
+    )
+    asset["cases"][0]["expected_evidence"]["official_url"] = "https://invalid.test"
+    invalid_source = tmp_path / "invalid-source.json"
+    invalid_source.write_text(json.dumps(asset))
+
+    with pytest.raises(FrozenCorpusError, match="official_url"):
+        load_frozen_matching_pairs(invalid_source)
+
+
 def test_frozen_matching_corpus_preserves_reviewed_classifications_and_bases() -> None:
-    discrepancies = []
-    false_exact_candidates = []
-    for pair in FROZEN_MATCHING_PAIRS:
-        submitted = _submitted_identifier(pair)
-        matches = match_cpsc_record(submitted, _retained_record(pair))
-        actual_class = min(
-            (match.candidate_class for match in matches),
-            default=None,
-            key=lambda value: value is not CandidateClass.EXACT_IDENTIFIER,
-        )
-        if actual_class is CandidateClass.EXACT_IDENTIFIER and (
-            pair.expected_class is not CandidateClass.EXACT_IDENTIFIER
-        ):
-            false_exact_candidates.append(pair)
+    report = matching_report(FROZEN_MATCHING_PAIRS)
 
-        if actual_class is not pair.expected_class:
-            discrepancies.append((pair, "classification", actual_class))
-            continue
-        if pair.expected_class is not None:
-            if matches[0].matched_field != pair.expected_field:
-                discrepancies.append((pair, "field", matches[0].matched_field))
-            if matches[0].matched_literal != pair.expected_literal:
-                discrepancies.append((pair, "literal", matches[0].matched_literal))
+    assert report.false_exact_candidates == ()
+    assert report.discrepancies == ()
 
-    assert false_exact_candidates == [] and discrepancies == []
+
+def test_matching_gate_reports_all_discrepancies_without_rewriting_expectations(
+) -> None:
+    incorrect_class = replace(
+        FROZEN_MATCHING_PAIRS[0], expected_class=CandidateClass.POSSIBLE_IDENTIFIER
+    )
+    incorrect_basis = replace(
+        FROZEN_MATCHING_PAIRS[1], expected_field="different source field"
+    )
+
+    report = matching_report((incorrect_class, incorrect_basis))
+
+    assert [discrepancy.kind for discrepancy in report.discrepancies] == [
+        "classification",
+        "field",
+    ]
+    assert incorrect_class.expected_class is CandidateClass.POSSIBLE_IDENTIFIER
 
 
 def test_every_expected_candidate_has_the_mandatory_evidence_contract_fields() -> None:

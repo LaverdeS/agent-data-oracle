@@ -232,6 +232,74 @@ async def test_operator_receives_source_linked_possible_candidate_evidence(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+async def test_retained_fixture_evaluation_preserves_evidence_lineage(
+    postgres_url: str, evidence_database: AsyncEngine
+) -> None:
+    import_completed_fixture(postgres_url)
+    email_provider = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email_provider,
+        clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
+        secure_cookies=True,
+    )
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as client,
+    ):
+        await sign_in_and_declare(client, email_provider, "operator@example.com")
+        form = await client.get("/queues/new")
+        created = await client.post(
+            "/queues",
+            content=urlencode(
+                [
+                    ("identifier_type", "model"),
+                    ("identifier_value", "HANS0002"),
+                    ("authorization", "authorized"),
+                    ("idempotency_key", form.headers["x-idempotency-key"]),
+                    ("csrf_token", form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+        contract_response = await client.get(created.headers["location"])
+
+    assert created.status_code == 303
+    assert "HANS0002" in contract_response.text
+    evaluation_id = created.headers["location"].rsplit("/", maxsplit=1)[-1]
+    async with evidence_database.connect() as connection:
+        lineage = (
+            await connection.execute(
+                text(
+                    "SELECT evaluations.source_revision_id, revisions.state, "
+                    "revisions.completed_at, rows.recall_number, rows.official_url, "
+                    "rows.source_revision_completed_at "
+                    "FROM evidence_evaluations AS evaluations "
+                    "JOIN cpsc_source_revisions AS revisions "
+                    "ON revisions.revision_id = evaluations.source_revision_id "
+                    "JOIN evidence_rows AS rows "
+                    "ON rows.evaluation_id = evaluations.evaluation_id "
+                    "WHERE evaluations.evaluation_id = CAST(:evaluation_id AS uuid)"
+                ),
+                {"evaluation_id": evaluation_id},
+            )
+        ).mappings().one()
+
+    assert lineage["state"] == "completed"
+    assert lineage["recall_number"] == "26651"
+    assert lineage["official_url"].endswith("Entrapment-and-Fall-Hazards")
+    assert lineage["source_revision_completed_at"] == lineage["completed_at"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_queue_submission_rejects_unbounded_input_and_replays_only_same_input(
     postgres_url: str, evidence_database: AsyncEngine
 ) -> None:

@@ -1,10 +1,13 @@
 # Frozen matching precision corpus
 
-`agent_data_oracle.frozen_matching.FROZEN_MATCHING_PAIRS` is the 100-pair
-release gate for deterministic matching. The expected class and match-basis
-facts are reviewer-owned data: do not regenerate or update them from matcher
-output. Each change must update the pair's `review_note` with the direct CPSC
-notice and the reason a reviewer changed the expectation.
+[`frozen_matching_corpus.json`](frozen_matching_corpus.json) is the 100-case,
+reviewer-owned release gate for deterministic matching. It is deliberately a
+flat, explicit asset: each row has its own identifier, retained fixture hash,
+typed literal, expected classification and basis, expected source/evidence
+facts, direct CPSC notice, and source-specific review reason. Do not replace
+these rows with a generator, permutations created at load time, or matcher
+output. Every expectation change requires a reviewer to update that row's note
+with the official-source reason.
 
 The compact projections were checked on 2026-09-07 against these official
 notices:
@@ -14,10 +17,12 @@ notices:
 - Brookstone Tabletop Fire Pits: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards
 - Granitestone Diamond Pro Blue Sauté Pans: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards
 
-The gate is entirely offline. It verifies 50 expected candidates (including
-exact UPC and possible model/brand paths) and 50 source-referenced confusers,
-then requires zero false exact candidates and all mandatory evidence-contract
-fields on expected candidates.
+The gate is entirely offline. The loader verifies each fixture hash and every
+source fact against the retained payload before it exposes pairs to the matcher.
+It verifies 50 expected candidates (including exact UPC, model, brand,
+delimiter, and constraint behavior) and 50 distinct source-referenced
+confusers, aggregates all discrepancies, requires zero false exact candidates,
+and checks mandatory evidence-contract fields on every expected candidate.
 
 The full recorded API payload for Brookstone recall 26-687 is retained as
 `recall-10915.json`; it is the authoritative offline record for the structured

@@ -1,0 +1,2555 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "case_id": "cpsc-candidate-001",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015930; delimiter form 1 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-002",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680 079 015 930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015930; delimiter form 2 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-003",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680-079-015-930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015930; delimiter form 3 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-004",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079 015930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015930; delimiter form 4 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-005",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079-015930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015930; delimiter form 5 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-006",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015-930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015930; delimiter form 6 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-007",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015 930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015930; delimiter form 7 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-008",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "6800 7901 5930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015930; delimiter form 8 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-009",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015947"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[1].UPC",
+        "literal": "680079015947"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015947; delimiter form 1 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-010",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680 079 015 947"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[1].UPC",
+        "literal": "680079015947"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015947; delimiter form 2 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-011",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680-079-015-947"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[1].UPC",
+        "literal": "680079015947"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015947; delimiter form 3 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-012",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079 015947"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[1].UPC",
+        "literal": "680079015947"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015947; delimiter form 4 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-013",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079-015947"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[1].UPC",
+        "literal": "680079015947"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015947; delimiter form 5 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-014",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015-947"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[1].UPC",
+        "literal": "680079015947"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015947; delimiter form 6 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-015",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015 947"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[1].UPC",
+        "literal": "680079015947"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015947; delimiter form 7 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-016",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "6800 7901 5947"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[1].UPC",
+        "literal": "680079015947"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015947; delimiter form 8 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-017",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015954"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[2].UPC",
+        "literal": "680079015954"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015954; delimiter form 1 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-018",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680 079 015 954"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[2].UPC",
+        "literal": "680079015954"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015954; delimiter form 2 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-019",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680-079-015-954"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[2].UPC",
+        "literal": "680079015954"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015954; delimiter form 3 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-020",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079 015954"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[2].UPC",
+        "literal": "680079015954"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015954; delimiter form 4 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-021",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079-015954"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[2].UPC",
+        "literal": "680079015954"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015954; delimiter form 5 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-022",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015-954"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[2].UPC",
+        "literal": "680079015954"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015954; delimiter form 6 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-023",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015 954"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[2].UPC",
+        "literal": "680079015954"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015954; delimiter form 7 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-024",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "6800 7901 5954"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[2].UPC",
+        "literal": "680079015954"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit UPC 680079015954; delimiter form 8 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-025",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "080313081316"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "080313081316"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed explicit set UPC 080313081316; delimiter form 1 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-026",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "080 313 081 316"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "080313081316"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed explicit set UPC 080313081316; delimiter form 2 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-027",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "080-313-081-316"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "080313081316"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed explicit set UPC 080313081316; delimiter form 3 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-028",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "080313 081316"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "080313081316"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed explicit set UPC 080313081316; delimiter form 4 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-029",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "080313-081316"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "080313081316"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed explicit set UPC 080313081316; delimiter form 5 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-030",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "080313081-316"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "080313081316"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed explicit set UPC 080313081316; delimiter form 6 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-031",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "080313081 316"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "080313081316"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed explicit set UPC 080313081316; delimiter form 7 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-032",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "0803 1308 1316"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "080313081316"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed explicit set UPC 080313081316; delimiter form 8 preserves the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-033",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "HANS0002"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Description (model literal)",
+        "literal": "HANS0002"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed printed HANS0002 model literal; case form HANS0002 remains a possible, constrained cue. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-034",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "hans0002"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Description (model literal)",
+        "literal": "HANS0002"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed printed HANS0002 model literal; case form hans0002 remains a possible, constrained cue. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-035",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "BSFIREPIT01"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Description (model literal)",
+        "literal": "BSFIREPIT01"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit BSFIREPIT01 packaging model literal; case form BSFIREPIT01 is a possible source-linked cue. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-036",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "bsfirepit01"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Description (model literal)",
+        "literal": "BSFIREPIT01"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit BSFIREPIT01 packaging model literal; case form bsfirepit01 is a possible source-linked cue. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-037",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "Bsfirepit01"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Description (model literal)",
+        "literal": "BSFIREPIT01"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit BSFIREPIT01 packaging model literal; case form Bsfirepit01 is a possible source-linked cue. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-038",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "HARPPA"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Title (brand retrieval)",
+        "literal": "HARPPA"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed title retrieval phrase HARPPA; HARPPA cannot establish product identity by itself. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-039",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "harppa"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Title (brand retrieval)",
+        "literal": "HARPPA"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed title retrieval phrase HARPPA; harppa cannot establish product identity by itself. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-040",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Southern Telecom"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Title (brand retrieval)",
+        "literal": "Southern Telecom"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed title retrieval phrase Southern Telecom; Southern Telecom cannot establish product identity by itself. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-041",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "southern telecom"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Title (brand retrieval)",
+        "literal": "Southern Telecom"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed title retrieval phrase Southern Telecom; southern telecom cannot establish product identity by itself. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-042",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Harbor Freight Tools"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Title (brand retrieval)",
+        "literal": "Harbor Freight Tools"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed title retrieval phrase Harbor Freight Tools; Harbor Freight Tools cannot establish product identity by itself. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-candidate-043",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "harbor freight tools"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Title (brand retrieval)",
+        "literal": "Harbor Freight Tools"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed title retrieval phrase Harbor Freight Tools; harbor freight tools cannot establish product identity by itself. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-candidate-044",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "E Mishan"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Title (brand retrieval)",
+        "literal": "E Mishan"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed title retrieval phrase E Mishan; E Mishan cannot establish product identity by itself. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-045",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "e mishan"
+      },
+      "expected_class": "possible_identifier_candidate",
+      "expected_match_basis": {
+        "field": "Title (brand retrieval)",
+        "literal": "E Mishan"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed title retrieval phrase E Mishan; e mishan cannot establish product identity by itself. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-046",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "6 80079015930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit Brookstone UPC 680079015930; this distinct checked delimiter placement normalizes to the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-047",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "68 0079015930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit Brookstone UPC 680079015930; this distinct checked delimiter placement normalizes to the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-048",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "68007 9015930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit Brookstone UPC 680079015930; this distinct checked delimiter placement normalizes to the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-049",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "68007901 5930"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit Brookstone UPC 680079015930; this distinct checked delimiter placement normalizes to the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-candidate-050",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "6800790159 30"
+      },
+      "expected_class": "exact_identifier_candidate",
+      "expected_match_basis": {
+        "field": "ProductUPCs[0].UPC",
+        "literal": "680079015930"
+      },
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed explicit Brookstone UPC 680079015930; this distinct checked delimiter placement normalizes to the retained structured UPC. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-051",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "BSFIREPIT00"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser BSFIREPIT00: same model family but unlisted number. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-052",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "BSFIREPIT04"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser BSFIREPIT04: same model family with successor suffix. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-053",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "BSFIREPIT1"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser BSFIREPIT1: missing zero changes printed model. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-054",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "BSFIREPIT01A"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser BSFIREPIT01A: revision suffix is not listed. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-055",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "BSFIREPIT-01"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser BSFIREPIT-01: punctuation changes normalized model. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-056",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "BSFIREPIT-02"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser BSFIREPIT-02: hyphenated variant is not printed. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-057",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "BSFIREPIT03-R2"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser BSFIREPIT03-R2: revision suffix is outside recalled models. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-058",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "BSFIREPIT10"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser BSFIREPIT10: nearby two-digit model is unlisted. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-059",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Brookstone"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser Brookstone: product brand is not title retrieval phrase. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-060",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Brookstone Fire Pit"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser Brookstone Fire Pit: family phrase is broader than identifier. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-061",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Southern Telecoms"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser Southern Telecoms: plural suffix is distinct. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-062",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Southern Telecom LLC"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser Southern Telecom LLC: legal entity suffix is absent. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-063",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015931"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser 680079015931: adjacent UPC check digit is not retained. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-064",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015948"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser 680079015948: adjacent UPC check digit is not retained. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-065",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "680079015955"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser 680079015955: adjacent UPC check digit is not retained. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-066",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "0680079015930"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser 0680079015930: leading zero changes UPC length. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-067",
+      "fixture": {
+        "filename": "recall-10915.json",
+        "sha256": "756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "6800790159300"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+        "recall_number": "26687",
+        "recall_date": "2026-08-13T00:00:00",
+        "last_publish_date": "2026-08-14T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards",
+      "review_note": "Brookstone Tabletop Fire Pits: Reviewed plausible confuser 6800790159300: trailing suffix changes UPC length. Official notice: https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-068",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "HANS0001"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HANS0001: previous model number is not printed. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-069",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "HANS0003"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HANS0003: next model number is not printed. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-070",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "HANS0002A"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HANS0002A: letter suffix is outside affected model. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-071",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "HANS-0002"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HANS-0002: delimiter changes normalized model. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-072",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "HANS00020"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HANS00020: numeric suffix is outside affected model. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-073",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "HANS002"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HANS002: zero omission changes model. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-074",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "HARPPA Nordi"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HARPPA Nordi: brand-plus-family phrase is not exact cue. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-075",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "HARPPA Baby"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HARPPA Baby: family variant is not title phrase. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-076",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "HARPPA Inc"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HARPPA Inc: legal-entity form is not title match. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-077",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "HARPPA LLC"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HARPPA LLC: legal-entity suffix is not title match. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-078",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "HARPPA 2"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser HARPPA 2: numeric variant is not identifier. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-079",
+      "fixture": {
+        "filename": "recall-10887.json",
+        "sha256": "afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Nordi"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+        "recall_number": "26651",
+        "recall_date": "2026-07-30T00:00:00",
+        "last_publish_date": "2026-07-31T00:00:00",
+        "constraint_scope": "not_machine_parsed",
+        "source_observed_at": "2026-09-04T00:00:00Z",
+        "source_revision_completed_at": "2026-09-04T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards",
+      "review_note": "HARPPA Nordi toddler tower: Reviewed plausible confuser Nordi: family-only term is not source cue. Official notice: https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-Entrapment-and-Fall-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-080",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "193175488718"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed plausible confuser 193175488718: description UPC is not structured ProductUPCs evidence. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-confuser-081",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "193175488719"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed plausible confuser 193175488719: adjacent UPC is not structured. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-confuser-082",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "19317548871"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed plausible confuser 19317548871: short UPC is distinct. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-confuser-083",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "0193175488718"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed plausible confuser 0193175488718: leading zero changes UPC length. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-confuser-084",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "70084"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed plausible confuser 70084: SKU is not a model literal. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-confuser-085",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "PREDATOR2000"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed plausible confuser PREDATOR2000: family label is not parsed model. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-confuser-086",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "POWER-2000"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed plausible confuser POWER-2000: product phrase is not model evidence. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-confuser-087",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Predator"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed plausible confuser Predator: display brand is not title retrieval phrase. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-confuser-088",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Harbor Freight"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed plausible confuser Harbor Freight: truncated importer is not title cue. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-confuser-089",
+      "fixture": {
+        "filename": "recall-10329.json",
+        "sha256": "c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Harbor Freight Tool"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+        "recall_number": "25366",
+        "recall_date": "2025-07-03T00:00:00",
+        "last_publish_date": "2025-07-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard",
+      "review_note": "Predator 2000W Power Station: Reviewed plausible confuser Harbor Freight Tool: singular suffix is not title cue. Official notice: https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
+    },
+    {
+      "case_id": "cpsc-confuser-090",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "080313081315"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser 080313081315: adjacent UPC check digit is not retained. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-091",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "080313081317"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser 080313081317: adjacent UPC check digit is not retained. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-092",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "0-80313-08131-5"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser 0-80313-08131-5: different final digit remains distinct. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-093",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "0080313081316"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser 0080313081316: leading zero changes UPC length. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-094",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "upc",
+        "literal": "0803130813160"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser 0803130813160: suffix changes UPC length. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-095",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "GRANI100"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser GRANI100: invented model is absent. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-096",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "DIAMONDPRO"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser DIAMONDPRO: family name is not parsed model. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-097",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "08131-6"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser 08131-6: UPC fragment cannot be model. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-098",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "model",
+        "literal": "PAN-115"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser PAN-115: size variant is not identifier. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-099",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "Granitestone"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser Granitestone: product brand is not title cue. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    },
+    {
+      "case_id": "cpsc-confuser-100",
+      "fixture": {
+        "filename": "recall-10687.json",
+        "sha256": "59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a"
+      },
+      "identifier": {
+        "type": "brand",
+        "literal": "E Mishan Sons"
+      },
+      "expected_class": null,
+      "expected_match_basis": null,
+      "expected_evidence": {
+        "official_url": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+        "recall_number": "26377",
+        "recall_date": "2026-04-02T00:00:00",
+        "last_publish_date": "2026-04-03T00:00:00",
+        "constraint_scope": "unavailable",
+        "source_observed_at": "2026-09-07T00:00:00Z",
+        "source_revision_completed_at": "2026-09-07T00:00:00Z"
+      },
+      "official_notice": "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards",
+      "review_note": "Granitestone Diamond Pro Blue pans: Reviewed plausible confuser E Mishan Sons: importer phrase does not exactly match title cue. Official notice: https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
+    }
+  ]
+}

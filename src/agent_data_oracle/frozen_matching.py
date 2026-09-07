@@ -1,24 +1,35 @@
-"""Frozen, human-reviewed CPSC matching pairs used by the release gate.
+"""Reviewer-owned CPSC matching corpus and its deterministic release gate."""
 
-Each source literal was checked against the linked official notice on 2026-09-07.
-The compact record projection deliberately contains only fields the deterministic
-matcher reads; expected outcomes remain independent, review-owned data.
-"""
-
+import hashlib
+import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-from agent_data_oracle.evidence_queue import CandidateClass, IdentifierType
+from agent_data_oracle.evidence_queue import (
+    CandidateClass,
+    IdentifierType,
+    SubmittedIdentifier,
+    _source_constraints,
+    match_cpsc_record,
+    normalize_identifier,
+)
+
+FIXTURE_DIRECTORY = Path(__file__).resolve().parents[2] / "tests/fixtures/cpsc"
+CORPUS_PATH = FIXTURE_DIRECTORY / "frozen_matching_corpus.json"
+
+
+class FrozenCorpusError(ValueError):
+    """A reviewer-owned corpus row no longer agrees with its retained source."""
 
 
 @dataclass(frozen=True)
 class FrozenSource:
-    name: str
-    official_url: str
     fixture_filename: str
     fixture_sha256: str
+    official_url: str
     recall_number: str
-    source_revision: str
     recall_date_literal: str
     last_publish_date_literal: str
     observed_at: datetime
@@ -27,6 +38,7 @@ class FrozenSource:
 
 @dataclass(frozen=True)
 class FrozenMatchingPair:
+    case_id: str
     review_note: str
     source: FrozenSource
     submitted_literal: str
@@ -37,195 +49,213 @@ class FrozenMatchingPair:
     expected_constraint_scope: str
 
 
-PREDATOR = FrozenSource(
-    name="Predator 2000W Power Station",
-    official_url=(
-        "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-"
-        "Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
-    ),
-    fixture_filename="recall-10329.json",
-    fixture_sha256="c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a",
-    recall_number="25-366",
-    source_revision="cpsc-2025-07-03-predator-2000w",
-    recall_date_literal="2025-07-03T00:00:00",
-    last_publish_date_literal="2025-07-03T00:00:00",
-    observed_at=datetime(2026, 9, 7, tzinfo=UTC),
-    completed_at=datetime(2026, 9, 7, tzinfo=UTC),
-)
-HARPPA = FrozenSource(
-    name="HARPPA Nordi Toddler Tower Stool",
-    official_url=(
-        "https://www.cpsc.gov/Recalls/2026/HARPPA-Recalls-Nordi-Toddler-"
-        "Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-"
-        "Entrapment-and-Fall-Hazards"
-    ),
-    fixture_filename="recall-10887.json",
-    fixture_sha256="afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c",
-    recall_number="26-651",
-    source_revision="cpsc-2026-07-31-harppa-nordi",
-    recall_date_literal="2026-07-30T00:00:00",
-    last_publish_date_literal="2026-07-31T00:00:00",
-    observed_at=datetime(2026, 9, 7, tzinfo=UTC),
-    completed_at=datetime(2026, 9, 7, tzinfo=UTC),
-)
-BROOKSTONE = FrozenSource(
-    name="Brookstone Tabletop Fire Pit",
-    official_url=(
-        "https://www.cpsc.gov/Recalls/2026/Southern-Telecom-Recalls-"
-        "Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-"
-        "Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
-    ),
-    fixture_filename="recall-10915.json",
-    fixture_sha256="756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d",
-    recall_number="26-687",
-    source_revision="cpsc-2026-08-13-brookstone-fire-pits",
-    recall_date_literal="2026-08-13T00:00:00",
-    last_publish_date_literal="2026-08-13T00:00:00",
-    observed_at=datetime(2026, 9, 7, tzinfo=UTC),
-    completed_at=datetime(2026, 9, 7, tzinfo=UTC),
-)
-GRANITESTONE = FrozenSource(
-    name="Granitestone Diamond Pro Blue Sauté Pan",
-    official_url=(
-        "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-"
-        "Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
-    ),
-    fixture_filename="recall-10687.json",
-    fixture_sha256="59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a",
-    recall_number="26-377",
-    source_revision="cpsc-2026-04-02-granitestone-pans",
-    recall_date_literal="2026-04-02T00:00:00",
-    last_publish_date_literal="2026-04-02T00:00:00",
-    observed_at=datetime(2026, 9, 7, tzinfo=UTC),
-    completed_at=datetime(2026, 9, 7, tzinfo=UTC),
-)
+@dataclass(frozen=True)
+class FrozenDiscrepancy:
+    case_id: str
+    kind: str
+    expected: str | None
+    actual: str | None
 
 
-def _pair(
-    source: FrozenSource,
-    identifier_type: IdentifierType,
-    submitted_literal: str,
-    expected_class: CandidateClass | None,
-    expected_field: str | None = None,
-    expected_literal: str | None = None,
-    expected_constraint_scope: str = "unavailable",
-) -> FrozenMatchingPair:
+@dataclass(frozen=True)
+class FrozenMatchingReport:
+    discrepancies: tuple[FrozenDiscrepancy, ...]
+    false_exact_candidates: tuple[str, ...]
+
+
+def _required_string(mapping: dict[str, object], field: str) -> str:
+    value = mapping.get(field)
+    if not isinstance(value, str) or not value:
+        raise FrozenCorpusError(f"missing {field}")
+    return value
+
+
+def _payload_string(record: dict[str, Any], field: str) -> str:
+    value = record.get(field)
+    if not isinstance(value, str) or not value:
+        raise FrozenCorpusError(f"retained payload is missing {field}")
+    return value
+
+
+def _expected_evidence(
+    case: dict[str, object], record: dict[str, Any]
+) -> tuple[dict[str, object], datetime, datetime]:
+    expected = case.get("expected_evidence")
+    if not isinstance(expected, dict):
+        raise FrozenCorpusError("missing expected_evidence")
+    expected_evidence = dict(expected)
+    source_fields = {
+        "official_url": record.get("URL"),
+        "recall_number": record.get("RecallNumber"),
+        "recall_date": record.get("RecallDate"),
+        "last_publish_date": record.get("LastPublishDate"),
+        "constraint_scope": _source_constraints(record)["scope"],
+    }
+    for field, actual in source_fields.items():
+        if expected_evidence.get(field) != actual:
+            raise FrozenCorpusError(f"{field} does not match retained payload")
+    observed_at = datetime.fromisoformat(
+        _required_string(expected_evidence, "source_observed_at").replace("Z", "+00:00")
+    )
+    completed_at = datetime.fromisoformat(
+        _required_string(expected_evidence, "source_revision_completed_at").replace(
+            "Z", "+00:00"
+        )
+    )
+    if observed_at > completed_at:
+        raise FrozenCorpusError("source observation is after source completion")
+    return expected_evidence, observed_at, completed_at
+
+
+def _record_for_fixture(filename: str, expected_hash: str) -> dict[str, Any]:
+    payload = (FIXTURE_DIRECTORY / filename).read_bytes()
+    if hashlib.sha256(payload).hexdigest() != expected_hash:
+        raise FrozenCorpusError(f"fixture hash mismatch for {filename}")
+    decoded = json.loads(payload)
+    if (
+        not isinstance(decoded, list)
+        or len(decoded) != 1
+        or not isinstance(decoded[0], dict)
+    ):
+        raise FrozenCorpusError(f"fixture {filename} must contain one CPSC record")
+    return decoded[0]
+
+
+def _case_pair(case: object) -> FrozenMatchingPair:
+    if not isinstance(case, dict):
+        raise FrozenCorpusError("corpus case must be an object")
+    fixture = case.get("fixture")
+    identifier = case.get("identifier")
+    match_basis = case.get("expected_match_basis")
+    if not isinstance(fixture, dict) or not isinstance(identifier, dict):
+        raise FrozenCorpusError("case is missing fixture or identifier")
+    filename = _required_string(fixture, "filename")
+    fixture_hash = _required_string(fixture, "sha256")
+    record = _record_for_fixture(filename, fixture_hash)
+    expected_evidence, observed_at, completed_at = _expected_evidence(case, record)
+    official_notice = _required_string(case, "official_notice")
+    if official_notice != _payload_string(record, "URL"):
+        raise FrozenCorpusError("official_notice does not match retained payload")
+    review_note = _required_string(case, "review_note")
+    if official_notice not in review_note:
+        raise FrozenCorpusError("review_note must include the official notice")
+    expected_class_literal = case.get("expected_class")
+    expected_class = (
+        None
+        if expected_class_literal is None
+        else CandidateClass(_required_string(case, "expected_class"))
+    )
+    if expected_class is None:
+        if match_basis is not None:
+            raise FrozenCorpusError("confuser cannot have an expected match basis")
+        expected_field = None
+        expected_literal = None
+    else:
+        if not isinstance(match_basis, dict):
+            raise FrozenCorpusError("candidate is missing expected_match_basis")
+        expected_field = _required_string(match_basis, "field")
+        expected_literal = _required_string(match_basis, "literal")
     return FrozenMatchingPair(
-        review_note=(
-            "Reviewed against the official CPSC notice; this expectation is frozen "
-            f"until {source.official_url} is reviewed for a source-specific reason."
+        case_id=_required_string(case, "case_id"),
+        review_note=review_note,
+        source=FrozenSource(
+            fixture_filename=filename,
+            fixture_sha256=fixture_hash,
+            official_url=_payload_string(record, "URL"),
+            recall_number=_payload_string(record, "RecallNumber"),
+            recall_date_literal=_payload_string(record, "RecallDate"),
+            last_publish_date_literal=_payload_string(record, "LastPublishDate"),
+            observed_at=observed_at,
+            completed_at=completed_at,
         ),
-        source=source,
-        submitted_literal=submitted_literal,
-        identifier_type=identifier_type,
+        submitted_literal=_required_string(identifier, "literal"),
+        identifier_type=IdentifierType(_required_string(identifier, "type")),
         expected_class=expected_class,
         expected_field=expected_field,
         expected_literal=expected_literal,
-        expected_constraint_scope=expected_constraint_scope,
+        expected_constraint_scope=_required_string(
+            expected_evidence, "constraint_scope"
+        ),
     )
 
 
-def _upc_candidates(
-    source: FrozenSource, literal: str, field_index: int
+def load_frozen_matching_pairs(
+    path: Path = CORPUS_PATH,
 ) -> tuple[FrozenMatchingPair, ...]:
-    return tuple(
-        _pair(
-            source,
-            IdentifierType.UPC,
-            value,
-            CandidateClass.EXACT_IDENTIFIER,
-            f"ProductUPCs[{field_index}].UPC",
-            literal,
-        )
-        for value in (
-            literal,
-            f"{literal[:1]} {literal[1:]}",
-            f"{literal[:2]}-{literal[2:]}",
-            f"{literal[:3]} {literal[3:]}",
-            f"{literal[:4]}-{literal[4:]}",
-            f"{literal[:5]} {literal[5:]}",
-            f"{literal[:6]}-{literal[6:]}",
-            f"{literal[:7]} {literal[7:]}",
-            f"{literal[:8]}-{literal[8:]}",
-            f"{literal[:9]} {literal[9:]}",
-            f"{literal[:10]}-{literal[10:]}",
-        )
+    """Load independently recorded expectations and verify their source binding."""
+    document = json.loads(path.read_text())
+    if not isinstance(document, dict) or not isinstance(document.get("cases"), list):
+        raise FrozenCorpusError("corpus must contain a cases list")
+    pairs = tuple(_case_pair(case) for case in document["cases"])
+    if len(pairs) != 100:
+        raise FrozenCorpusError("corpus must contain exactly 100 cases")
+    case_ids = [pair.case_id for pair in pairs]
+    identities = [
+        (pair.source.fixture_filename, pair.identifier_type, pair.submitted_literal)
+        for pair in pairs
+    ]
+    if len(set(case_ids)) != len(case_ids) or len(set(identities)) != len(identities):
+        raise FrozenCorpusError("corpus cases must be individually distinct")
+    if sum(pair.expected_class is not None for pair in pairs) < 50:
+        raise FrozenCorpusError("corpus must contain at least 50 expected candidates")
+    return pairs
+
+
+def _submitted_identifier(pair: FrozenMatchingPair) -> SubmittedIdentifier:
+    return SubmittedIdentifier(
+        identifier_type=pair.identifier_type,
+        submitted_literal=pair.submitted_literal,
+        normalized_value=normalize_identifier(
+            pair.identifier_type, pair.submitted_literal
+        ),
     )
 
 
-_CANDIDATES = (
-    _upc_candidates(BROOKSTONE, "680079015930", 0)
-    + _upc_candidates(BROOKSTONE, "680079015947", 1)
-    + _upc_candidates(BROOKSTONE, "680079015954", 2)
-    + _upc_candidates(GRANITESTONE, "080313081316", 0)
-    + tuple(
-        _pair(
-            HARPPA,
-            IdentifierType.MODEL,
-            literal,
-            CandidateClass.POSSIBLE_IDENTIFIER,
-            "Description (model literal)",
-            "HANS0002",
-            "not_machine_parsed",
+def matching_report(
+    pairs: tuple[FrozenMatchingPair, ...],
+) -> FrozenMatchingReport:
+    """Compare all frozen expectations without modifying the reviewer-owned asset."""
+    discrepancies: list[FrozenDiscrepancy] = []
+    false_exact_candidates: list[str] = []
+    for pair in pairs:
+        record = _record_for_fixture(
+            pair.source.fixture_filename, pair.source.fixture_sha256
         )
-        for literal in ("HANS0002", "hans0002")
-    )
-    + tuple(
-        _pair(
-            BROOKSTONE,
-            IdentifierType.MODEL,
-            literal,
-            CandidateClass.POSSIBLE_IDENTIFIER,
-            "Description (model literal)",
-            literal.upper(),
+        matches = match_cpsc_record(_submitted_identifier(pair), record)
+        actual_class = min(
+            (match.candidate_class for match in matches),
+            default=None,
+            key=lambda value: value is not CandidateClass.EXACT_IDENTIFIER,
         )
-        for literal in (
-            "BSFIREPIT01",
-            "bsfirepit01",
-        )
-    )
-    + (
-        _pair(
-            HARPPA,
-            IdentifierType.BRAND,
-            "HARPPA",
-            CandidateClass.POSSIBLE_IDENTIFIER,
-            "Title (brand retrieval)",
-            "HARPPA",
-            "not_machine_parsed",
-        ),
-        _pair(
-            BROOKSTONE,
-            IdentifierType.BRAND,
-            "Southern Telecom",
-            CandidateClass.POSSIBLE_IDENTIFIER,
-            "Title (brand retrieval)",
-            "Southern Telecom",
-        ),
-    )
-)
+        if actual_class is CandidateClass.EXACT_IDENTIFIER and (
+            pair.expected_class is not CandidateClass.EXACT_IDENTIFIER
+        ):
+            false_exact_candidates.append(pair.case_id)
+        if actual_class is not pair.expected_class:
+            discrepancies.append(
+                FrozenDiscrepancy(
+                    pair.case_id,
+                    "classification",
+                    None if pair.expected_class is None else str(pair.expected_class),
+                    None if actual_class is None else str(actual_class),
+                )
+            )
+        if pair.expected_class is not None:
+            actual_field = matches[0].matched_field if matches else None
+            actual_literal = matches[0].matched_literal if matches else None
+            if actual_field != pair.expected_field:
+                discrepancies.append(
+                    FrozenDiscrepancy(
+                        pair.case_id, "field", pair.expected_field, actual_field
+                    )
+                )
+            if actual_literal != pair.expected_literal:
+                discrepancies.append(
+                    FrozenDiscrepancy(
+                        pair.case_id, "literal", pair.expected_literal, actual_literal
+                    )
+                )
+    return FrozenMatchingReport(tuple(discrepancies), tuple(false_exact_candidates))
 
-_CONFUSERS = tuple(
-    _pair(source, identifier_type, literal, None)
-    for source, identifier_type, literal in (
-        *(
-            (BROOKSTONE, IdentifierType.UPC, f"1931754887{suffix}")
-            for suffix in range(10)
-        ),
-        *(
-            (BROOKSTONE, IdentifierType.UPC, f"6800790159{suffix:02d}")
-            for suffix in range(10)
-        ),
-        *(
-            (GRANITESTONE, IdentifierType.UPC, f"0803130813{suffix:02d}")
-            for suffix in range(10)
-        ),
-        *(
-            (HARPPA, IdentifierType.MODEL, f"HANS01{suffix:02d}")
-            for suffix in range(10)
-        ),
-        *((HARPPA, IdentifierType.BRAND, f"HARPPA {suffix}") for suffix in range(10)),
-    )
-)
 
-FROZEN_MATCHING_PAIRS = _CANDIDATES + _CONFUSERS
+FROZEN_MATCHING_PAIRS = load_frozen_matching_pairs()
