@@ -41,6 +41,20 @@ def _retained_record(pair: object) -> dict[str, object]:
 
 def test_frozen_matching_corpus_has_one_hundred_reviewed_pairs() -> None:
     assert len(FROZEN_MATCHING_PAIRS) == 100
+    assert (
+        len(
+            {
+                (
+                    pair.source.fixture_filename,
+                    pair.identifier_type,
+                    pair.submitted_literal,
+                )
+                for pair in FROZEN_MATCHING_PAIRS
+            }
+        )
+        == 100
+    )
+    assert sum(pair.expected_class is not None for pair in FROZEN_MATCHING_PAIRS) == 50
     assert all(
         pair.source.observed_at <= pair.source.completed_at
         for pair in FROZEN_MATCHING_PAIRS

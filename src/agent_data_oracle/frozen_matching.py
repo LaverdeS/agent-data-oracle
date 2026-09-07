@@ -24,6 +24,7 @@ class FrozenSource:
     observed_at: datetime
     completed_at: datetime
 
+
 @dataclass(frozen=True)
 class FrozenMatchingPair:
     review_note: str
@@ -125,7 +126,7 @@ def _pair(
 
 
 def _upc_candidates(
-    source: FrozenSource, literal: str, count: int
+    source: FrozenSource, literal: str, field_index: int
 ) -> tuple[FrozenMatchingPair, ...]:
     return tuple(
         _pair(
@@ -133,17 +134,30 @@ def _upc_candidates(
             IdentifierType.UPC,
             value,
             CandidateClass.EXACT_IDENTIFIER,
-            "ProductUPCs[0].UPC",
+            f"ProductUPCs[{field_index}].UPC",
             literal,
         )
-        for value in (literal, f"{literal[:3]}-{literal[3:6]} {literal[6:]}")[:count]
+        for value in (
+            literal,
+            f"{literal[:1]} {literal[1:]}",
+            f"{literal[:2]}-{literal[2:]}",
+            f"{literal[:3]} {literal[3:]}",
+            f"{literal[:4]}-{literal[4:]}",
+            f"{literal[:5]} {literal[5:]}",
+            f"{literal[:6]}-{literal[6:]}",
+            f"{literal[:7]} {literal[7:]}",
+            f"{literal[:8]}-{literal[8:]}",
+            f"{literal[:9]} {literal[9:]}",
+            f"{literal[:10]}-{literal[10:]}",
+        )
     )
 
 
 _CANDIDATES = (
-    _upc_candidates(BROOKSTONE, "680079015930", 2)
-    + _upc_candidates(BROOKSTONE, "680079015930", 2)
-    + _upc_candidates(GRANITESTONE, "080313081316", 2)
+    _upc_candidates(BROOKSTONE, "680079015930", 0)
+    + _upc_candidates(BROOKSTONE, "680079015947", 1)
+    + _upc_candidates(BROOKSTONE, "680079015954", 2)
+    + _upc_candidates(GRANITESTONE, "080313081316", 0)
     + tuple(
         _pair(
             HARPPA,
@@ -154,19 +168,40 @@ _CANDIDATES = (
             "HANS0002",
             "not_machine_parsed",
         )
-        for literal in ("HANS0002", "hans0002") * 10
+        for literal in ("HANS0002", "hans0002")
     )
     + tuple(
         _pair(
+            BROOKSTONE,
+            IdentifierType.MODEL,
+            literal,
+            CandidateClass.POSSIBLE_IDENTIFIER,
+            "Description (model literal)",
+            literal.upper(),
+        )
+        for literal in (
+            "BSFIREPIT01",
+            "bsfirepit01",
+        )
+    )
+    + (
+        _pair(
             HARPPA,
             IdentifierType.BRAND,
-            literal,
+            "HARPPA",
             CandidateClass.POSSIBLE_IDENTIFIER,
             "Title (brand retrieval)",
             "HARPPA",
             "not_machine_parsed",
-        )
-        for literal in ("HARPPA", "harppa") * 12
+        ),
+        _pair(
+            BROOKSTONE,
+            IdentifierType.BRAND,
+            "Southern Telecom",
+            CandidateClass.POSSIBLE_IDENTIFIER,
+            "Title (brand retrieval)",
+            "Southern Telecom",
+        ),
     )
 )
 
