@@ -46,6 +46,22 @@ async def access_database(postgres_url: str) -> AsyncIterator[None]:
                 "browser_sessions, login_tokens, auth_attempts, operators CASCADE"
             )
         )
+        await connection.execute(
+            text(
+                "INSERT INTO audit_gate_state (singleton, committed_queue_count) "
+                "VALUES (true, 0) ON CONFLICT (singleton) DO UPDATE "
+                "SET committed_queue_count = 0"
+            )
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO global_pause_state (singleton, is_paused) "
+                "VALUES (true, false) ON CONFLICT (singleton) DO UPDATE "
+                "SET is_paused = false, trigger_kind = NULL, "
+                "reason_category = NULL, activated_at = NULL, activated_by = NULL, "
+                "resolution_note = NULL, resolved_at = NULL, resolved_by = NULL"
+            )
+        )
     try:
         yield
     finally:

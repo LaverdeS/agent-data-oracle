@@ -18,6 +18,7 @@ NORMALIZATION_VERSION = "identifier-v2"
 MATCHER_VERSION = "deterministic-candidate-v1"
 MAX_IDENTIFIER_ROWS = 50
 MAX_IDENTIFIER_LITERAL_LENGTH = 80
+FOUNDER_AUDIT_QUEUE_LIMIT = 20
 _BRAND_LITERAL = re.compile(r"[\w][\w'&+\-]{0,31}( [\w][\w'&+\-]{0,31}){0,2}")
 _MODEL_LITERAL = re.compile(
     r"(?:[Mm]odel )?(?:[A-Za-z0-9]+(?:[-_./][A-Za-z0-9]+)+|[A-Za-z]+[0-9]+)"
@@ -51,6 +52,10 @@ class IdempotencyConflictError(ValueError):
 
 class SourceUnavailableError(RuntimeError):
     """No completed CPSC source revision is available for evaluation."""
+
+
+class GloballyPausedError(RuntimeError):
+    """The founder has stopped new work while preserving retained evidence."""
 
 
 class IdentifierType(StrEnum):
@@ -190,6 +195,29 @@ class EvidenceQueueContract:
     matcher_version: str
     inputs: tuple[SubmittedIdentifier, ...]
     candidates: tuple["EvidenceRow", ...] = ()
+
+
+class AuditDecision(StrEnum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+@dataclass(frozen=True)
+class OperatorQueue:
+    contract: EvidenceQueueContract | None
+    is_pending_founder_audit: bool
+
+
+@dataclass(frozen=True)
+class PendingAudit:
+    evaluation_id: UUID
+    evaluated_at: datetime
+
+
+@dataclass(frozen=True)
+class GlobalPause:
+    is_paused: bool
+    reason_category: str | None
 
 
 @dataclass(frozen=True)
@@ -408,6 +436,15 @@ class EvidenceQueues:
                     evaluated_at=previous["evaluated_at"],
                 )
 
+            is_paused = await connection.scalar(
+                text(
+                    "SELECT is_paused FROM global_pause_state "
+                    "WHERE singleton = true FOR UPDATE"
+                )
+            )
+            if is_paused:
+                raise GloballyPausedError("new evidence queues are paused")
+
             source_revision_id = await connection.scalar(
                 text(
                     "SELECT current.revision_id "
@@ -454,6 +491,18 @@ class EvidenceQueues:
                         candidate_rows.append(
                             (input_position, source_record, match_bases)
                         )
+            queue_number = await connection.scalar(
+                text(
+                    "UPDATE audit_gate_state "
+                    "SET committed_queue_count = committed_queue_count + 1 "
+                    "WHERE singleton = true RETURNING committed_queue_count"
+                )
+            )
+            if not isinstance(queue_number, int):
+                raise RuntimeError("founder audit gate is unavailable")
+            is_held_for_audit = (
+                bool(candidate_rows) and queue_number <= FOUNDER_AUDIT_QUEUE_LIMIT
+            )
             evaluation_id = uuid4()
             await connection.execute(
                 text(
@@ -475,7 +524,7 @@ class EvidenceQueues:
                     "normalization_version": NORMALIZATION_VERSION,
                     "outcome": "candidates" if candidate_rows else "no_candidates",
                     "operator_id": operator_id,
-                    "released_at": evaluated_at,
+                    "released_at": None if is_held_for_audit else evaluated_at,
                     "source_revision_id": source_revision_id,
                 },
             )
@@ -574,11 +623,17 @@ class EvidenceQueues:
                 (
                     await connection.execute(
                         text(
-                            "SELECT evaluation_id, evaluated_at "
-                            "FROM evidence_evaluations "
+                            "SELECT evaluations.evaluation_id, "
+                            "evaluations.evaluated_at "
+                            "FROM evidence_evaluations AS evaluations "
+                            "LEFT JOIN evaluation_releases AS releases "
+                            "ON releases.evaluation_id = evaluations.evaluation_id "
                             "WHERE operator_id = :operator_id "
-                            "AND released_at IS NOT NULL "
-                            "ORDER BY released_at DESC"
+                            "AND COALESCE(evaluations.released_at, "
+                            "releases.released_at) "
+                            "IS NOT NULL "
+                            "ORDER BY COALESCE(evaluations.released_at, "
+                            "releases.released_at) DESC"
                         ),
                         {"operator_id": operator_id},
                     )
@@ -593,29 +648,9 @@ class EvidenceQueues:
             for row in rows
         )
 
-    async def released_contract(
-        self, *, operator_id: UUID, evaluation_id: UUID
-    ) -> EvidenceQueueContract | None:
+    async def _contract_from_evaluation(self, evaluation: Any) -> EvidenceQueueContract:
+        evaluation_id = evaluation["evaluation_id"]
         async with self._database.connection() as connection:
-            evaluation = (
-                (
-                    await connection.execute(
-                        text(
-                            "SELECT evaluation_id, source_revision_id, evaluated_at, "
-                            "normalization_version, matcher_version "
-                            "FROM evidence_evaluations "
-                            "WHERE evaluation_id = :evaluation_id "
-                            "AND operator_id = :operator_id "
-                            "AND released_at IS NOT NULL"
-                        ),
-                        {"evaluation_id": evaluation_id, "operator_id": operator_id},
-                    )
-                )
-                .mappings()
-                .one_or_none()
-            )
-            if evaluation is None:
-                return None
             inputs = (
                 (
                     await connection.execute(
@@ -693,3 +728,373 @@ class EvidenceQueues:
                 for row in candidate_rows
             ),
         )
+
+    async def released_contract(
+        self, *, operator_id: UUID, evaluation_id: UUID
+    ) -> EvidenceQueueContract | None:
+        async with self._database.connection() as connection:
+            evaluation = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT evidence_evaluations.evaluation_id, "
+                            "evidence_evaluations.source_revision_id, "
+                            "evidence_evaluations.evaluated_at, "
+                            "evidence_evaluations.normalization_version, "
+                            "evidence_evaluations.matcher_version "
+                            "FROM evidence_evaluations "
+                            "LEFT JOIN evaluation_releases AS releases "
+                            "ON releases.evaluation_id = "
+                            "evidence_evaluations.evaluation_id "
+                            "WHERE evidence_evaluations.evaluation_id = :evaluation_id "
+                            "AND operator_id = :operator_id "
+                            "AND COALESCE(evidence_evaluations.released_at, "
+                            "releases.released_at) IS NOT NULL"
+                        ),
+                        {"evaluation_id": evaluation_id, "operator_id": operator_id},
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+        if evaluation is None:
+            return None
+        return await self._contract_from_evaluation(evaluation)
+
+    async def operator_queue(
+        self, *, operator_id: UUID, evaluation_id: UUID
+    ) -> OperatorQueue | None:
+        async with self._database.connection() as connection:
+            evaluation = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT evidence_evaluations.evaluation_id, "
+                            "evidence_evaluations.source_revision_id, "
+                            "evidence_evaluations.evaluated_at, "
+                            "evidence_evaluations.normalization_version, "
+                            "evidence_evaluations.matcher_version, "
+                            "COALESCE(evidence_evaluations.released_at, "
+                            "releases.released_at) AS released_at "
+                            "FROM evidence_evaluations "
+                            "LEFT JOIN evaluation_releases AS releases "
+                            "ON releases.evaluation_id = "
+                            "evidence_evaluations.evaluation_id "
+                            "WHERE evidence_evaluations.evaluation_id = :evaluation_id "
+                            "AND operator_id = :operator_id"
+                        ),
+                        {"evaluation_id": evaluation_id, "operator_id": operator_id},
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+        if evaluation is None:
+            return None
+        if evaluation["released_at"] is None:
+            return OperatorQueue(contract=None, is_pending_founder_audit=True)
+        return OperatorQueue(
+            contract=await self._contract_from_evaluation(evaluation),
+            is_pending_founder_audit=False,
+        )
+
+    async def pending_audits(self) -> tuple[PendingAudit, ...]:
+        async with self._database.connection() as connection:
+            rows = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT evaluations.evaluation_id, "
+                            "evaluations.evaluated_at "
+                            "FROM evidence_evaluations AS evaluations "
+                            "LEFT JOIN evaluation_releases AS releases "
+                            "ON releases.evaluation_id = evaluations.evaluation_id "
+                            "LEFT JOIN evaluation_audits AS audits "
+                            "ON audits.evaluation_id = evaluations.evaluation_id "
+                            "WHERE evaluations.outcome = 'candidates' "
+                            "AND evaluations.released_at IS NULL "
+                            "AND releases.evaluation_id IS NULL "
+                            "AND audits.audit_id IS NULL "
+                            "ORDER BY evaluations.evaluated_at, "
+                            "evaluations.evaluation_id"
+                        )
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        return tuple(
+            PendingAudit(
+                evaluation_id=row["evaluation_id"], evaluated_at=row["evaluated_at"]
+            )
+            for row in rows
+        )
+
+    async def pending_audit_contract(
+        self, *, evaluation_id: UUID
+    ) -> EvidenceQueueContract | None:
+        async with self._database.connection() as connection:
+            evaluation = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT evaluations.evaluation_id, "
+                            "evaluations.source_revision_id, evaluations.evaluated_at, "
+                            "evaluations.normalization_version, "
+                            "evaluations.matcher_version "
+                            "FROM evidence_evaluations AS evaluations "
+                            "LEFT JOIN evaluation_releases AS releases "
+                            "ON releases.evaluation_id = evaluations.evaluation_id "
+                            "LEFT JOIN evaluation_audits AS audits "
+                            "ON audits.evaluation_id = evaluations.evaluation_id "
+                            "WHERE evaluations.evaluation_id = :evaluation_id "
+                            "AND evaluations.outcome = 'candidates' "
+                            "AND evaluations.released_at IS NULL "
+                            "AND releases.evaluation_id IS NULL "
+                            "AND audits.audit_id IS NULL"
+                        ),
+                        {"evaluation_id": evaluation_id},
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+        if evaluation is None:
+            return None
+        return await self._contract_from_evaluation(evaluation)
+
+    async def record_founder_audit(
+        self,
+        *,
+        evaluation_id: UUID,
+        founder_id: UUID,
+        decision: AuditDecision,
+        reason_category: str | None = None,
+    ) -> bool:
+        if decision is AuditDecision.REJECTED:
+            if (
+                reason_category is None
+                or not reason_category.strip()
+                or len(reason_category) > 120
+            ):
+                raise ValueError("A material rejection reason category is required.")
+            reason_category = reason_category.strip()
+        elif reason_category is not None:
+            raise ValueError("Approval cannot include a rejection reason category.")
+        audited_at = self._clock()
+        async with self._database.transaction() as connection:
+            await connection.execute(
+                text(
+                    "SELECT is_paused FROM global_pause_state "
+                    "WHERE singleton = true FOR UPDATE"
+                )
+            )
+            evaluation = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT evaluations.evaluation_id "
+                            "FROM evidence_evaluations AS evaluations "
+                            "LEFT JOIN evaluation_releases AS releases "
+                            "ON releases.evaluation_id = evaluations.evaluation_id "
+                            "WHERE evaluations.evaluation_id = :evaluation_id "
+                            "AND evaluations.outcome = 'candidates' "
+                            "AND evaluations.released_at IS NULL "
+                            "AND releases.evaluation_id IS NULL "
+                            "FOR UPDATE OF evaluations"
+                        ),
+                        {"evaluation_id": evaluation_id},
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+            if evaluation is None:
+                return False
+            already_audited = await connection.scalar(
+                text(
+                    "SELECT 1 FROM evaluation_audits "
+                    "WHERE evaluation_id = :evaluation_id"
+                ),
+                {"evaluation_id": evaluation_id},
+            )
+            if already_audited is not None:
+                return False
+            await connection.execute(
+                text(
+                    "INSERT INTO evaluation_audits "
+                    "(audit_id, evaluation_id, founder_id, decision, reason_category, "
+                    "audited_at) VALUES "
+                    "(:audit_id, :evaluation_id, :founder_id, :decision, "
+                    ":reason_category, :audited_at)"
+                ),
+                {
+                    "audit_id": uuid4(),
+                    "evaluation_id": evaluation_id,
+                    "founder_id": founder_id,
+                    "decision": decision,
+                    "reason_category": reason_category,
+                    "audited_at": audited_at,
+                },
+            )
+            if decision is AuditDecision.APPROVED:
+                await connection.execute(
+                    text(
+                        "INSERT INTO evaluation_releases "
+                        "(evaluation_id, released_at) VALUES "
+                        "(:evaluation_id, :released_at)"
+                    ),
+                    {"evaluation_id": evaluation_id, "released_at": audited_at},
+                )
+            else:
+                await self._activate_pause(
+                    connection,
+                    founder_id=founder_id,
+                    trigger_kind="material_audit_rejection",
+                    reason_category=reason_category,
+                    occurred_at=audited_at,
+                )
+        return True
+
+    async def _activate_pause(
+        self,
+        connection: Any,
+        *,
+        founder_id: UUID,
+        trigger_kind: str,
+        reason_category: str | None,
+        occurred_at: datetime,
+    ) -> None:
+        if reason_category is None:
+            raise ValueError("A pause reason category is required.")
+        await connection.execute(
+            text(
+                "UPDATE global_pause_state SET is_paused = true, "
+                "trigger_kind = :trigger_kind, reason_category = :reason_category, "
+                "activated_at = :occurred_at, activated_by = :founder_id, "
+                "resolution_note = NULL, resolved_at = NULL, resolved_by = NULL "
+                "WHERE singleton = true"
+            ),
+            {
+                "founder_id": founder_id,
+                "occurred_at": occurred_at,
+                "reason_category": reason_category,
+                "trigger_kind": trigger_kind,
+            },
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO global_pause_events "
+                "(event_id, action, trigger_kind, reason_category, actor_id, "
+                "occurred_at) VALUES "
+                "(:event_id, 'activated', :trigger_kind, :reason_category, "
+                ":founder_id, :occurred_at)"
+            ),
+            {
+                "event_id": uuid4(),
+                "founder_id": founder_id,
+                "occurred_at": occurred_at,
+                "reason_category": reason_category,
+                "trigger_kind": trigger_kind,
+            },
+        )
+
+    async def global_pause(self) -> GlobalPause:
+        async with self._database.connection() as connection:
+            state = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT is_paused, reason_category FROM global_pause_state "
+                            "WHERE singleton = true"
+                        )
+                    )
+                )
+                .mappings()
+                .one()
+            )
+        return GlobalPause(
+            is_paused=state["is_paused"], reason_category=state["reason_category"]
+        )
+
+    async def activate_manual_pause(
+        self, *, founder_id: UUID, reason_category: str
+    ) -> bool:
+        reason_category = reason_category.strip()
+        if not reason_category or len(reason_category) > 120:
+            raise ValueError("A pause reason category is required.")
+        occurred_at = self._clock()
+        async with self._database.transaction() as connection:
+            state = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT is_paused FROM global_pause_state "
+                            "WHERE singleton = true FOR UPDATE"
+                        )
+                    )
+                )
+                .mappings()
+                .one()
+            )
+            if state["is_paused"]:
+                return False
+            await self._activate_pause(
+                connection,
+                founder_id=founder_id,
+                trigger_kind="manual_founder_pause",
+                reason_category=reason_category,
+                occurred_at=occurred_at,
+            )
+        return True
+
+    async def resolve_pause(self, *, founder_id: UUID, resolution_note: str) -> bool:
+        resolution_note = resolution_note.strip()
+        if not resolution_note or len(resolution_note) > 500:
+            raise ValueError("A pause resolution note is required.")
+        resolved_at = self._clock()
+        async with self._database.transaction() as connection:
+            state = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT is_paused, trigger_kind, reason_category "
+                            "FROM global_pause_state WHERE singleton = true FOR UPDATE"
+                        )
+                    )
+                )
+                .mappings()
+                .one()
+            )
+            if not state["is_paused"]:
+                return False
+            await connection.execute(
+                text(
+                    "UPDATE global_pause_state SET is_paused = false, "
+                    "resolved_at = :resolved_at, resolved_by = :founder_id, "
+                    "resolution_note = :resolution_note WHERE singleton = true"
+                ),
+                {
+                    "founder_id": founder_id,
+                    "resolution_note": resolution_note,
+                    "resolved_at": resolved_at,
+                },
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO global_pause_events "
+                    "(event_id, action, trigger_kind, reason_category, actor_id, "
+                    "occurred_at, resolution_note) VALUES "
+                    "(:event_id, 'resolved', :trigger_kind, :reason_category, "
+                    ":founder_id, :resolved_at, :resolution_note)"
+                ),
+                {
+                    "event_id": uuid4(),
+                    "founder_id": founder_id,
+                    "reason_category": state["reason_category"],
+                    "resolution_note": resolution_note,
+                    "resolved_at": resolved_at,
+                    "trigger_kind": state["trigger_kind"],
+                },
+            )
+        return True

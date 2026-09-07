@@ -4,5 +4,34 @@
 {% block content %}
   <p class="quiet">Second factor verified</p>
   <h1>Founder controls</h1>
-  <p class="lede">Audit, pause, deletion and operational controls land in their dedicated tickets.</p>
+  {% if pause.is_paused %}
+  <section class="card warning">
+    <h2>New work is globally paused</h2>
+    <p>Reason category: {{ pause.reason_category }}</p>
+    <form method="post" action="/founder/pause/resolve">
+      <label for="resolution_note">Resolution note</label>
+      <input id="resolution_note" name="resolution_note" required maxlength="500">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Resolve pause</button>
+    </form>
+  </section>
+  {% else %}
+  <section class="card">
+    <h2>Pause new work</h2>
+    <form method="post" action="/founder/pause">
+      <label for="reason_category">Reason category</label>
+      <input id="reason_category" name="reason_category" required maxlength="120">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Pause new work</button>
+    </form>
+  </section>
+  {% endif %}
+  <section class="card">
+    <h2>Queues awaiting founder audit</h2>
+    {% if pending_audits %}
+    <ul>{% for audit in pending_audits %}<li><a href="/founder/audits/{{ audit.evaluation_id }}">Inspect queue from {{ audit.evaluated_at }}</a></li>{% endfor %}</ul>
+    {% else %}
+    <p>No queues await founder audit.</p>
+    {% endif %}
+  </section>
 {% endblock %}

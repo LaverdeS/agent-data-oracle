@@ -2,7 +2,7 @@
 {% block title %}Evidence queue · Agent Data Oracle{% endblock %}
 {% block navigation %}<a href="/app">Your queues</a>{% endblock %}
 {% block content %}
-  <p class="quiet">Released immutable evidence queue</p>
+  <p class="quiet">{% if audit %}Founder audit of an immutable evidence queue{% else %}Released immutable evidence queue{% endif %}</p>
   {% if evidence.outcome == "candidates" %}
   <h1>Possible recall-to-listing action records</h1>
   <p class="lede">These deterministic CPSC matches are prompts for human review, not product verdicts.</p>
@@ -39,4 +39,19 @@
     <dt>Normalization version</dt><dd>{{ evidence.normalization_version }}</dd>
     <dt>Matcher version</dt><dd>{{ evidence.matcher_version }}</dd>
   </dl>
+  {% if audit %}
+  <section class="card warning">
+    <h2>Founder decision</h2>
+    <form method="post" action="/founder/audits/{{ evaluation_id }}/approve">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Approve and release this exact evaluation</button>
+    </form>
+    <form method="post" action="/founder/audits/{{ evaluation_id }}/reject">
+      <label for="reason_category">Material rejection reason category</label>
+      <input id="reason_category" name="reason_category" required maxlength="120">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Reject and pause new work</button>
+    </form>
+  </section>
+  {% endif %}
 {% endblock %}

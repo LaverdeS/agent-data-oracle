@@ -1,3 +1,8 @@
+import asyncio
+import base64
+import hashlib
+import hmac
+import struct
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -39,6 +44,22 @@ async def evidence_database(postgres_url: str) -> AsyncEngine:
                 "cpsc_revision_records, "
                 "cpsc_source_observations, cpsc_recall_versions, cpsc_recalls, "
                 "cpsc_source_revisions, cpsc_ingestion_runs CASCADE"
+            )
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO audit_gate_state (singleton, committed_queue_count) "
+                "VALUES (true, 0) ON CONFLICT (singleton) DO UPDATE "
+                "SET committed_queue_count = 0"
+            )
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO global_pause_state (singleton, is_paused) "
+                "VALUES (true, false) ON CONFLICT (singleton) DO UPDATE "
+                "SET is_paused = false, trigger_kind = NULL, "
+                "reason_category = NULL, activated_at = NULL, activated_by = NULL, "
+                "resolution_note = NULL, resolved_at = NULL, resolved_by = NULL"
             )
         )
     try:
@@ -96,6 +117,15 @@ async def sign_in_and_declare(
             "csrf_token": declaration.cookies["ado_csrf"],
         },
     )
+
+
+def totp_code(secret: str, instant: datetime) -> str:
+    key = base64.b32decode(secret + "=" * (-len(secret) % 8))
+    counter = int(instant.timestamp()) // 30
+    digest = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    value = struct.unpack(">I", digest[offset : offset + 4])[0] & 0x7FFFFFFF
+    return f"{value % 1_000_000:06d}"
 
 
 @pytest.mark.asyncio
@@ -170,7 +200,7 @@ async def test_operator_can_create_reopen_and_isolate_a_no_candidate_queue(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_operator_receives_source_linked_possible_candidate_evidence(
+async def test_operator_sees_only_pending_status_for_held_candidate_evidence(
     postgres_url: str, evidence_database: AsyncEngine
 ) -> None:
     import_completed_fixture(postgres_url)
@@ -212,12 +242,10 @@ async def test_operator_receives_source_linked_possible_candidate_evidence(
         queue = await client.get(submitted.headers["location"])
 
     assert submitted.status_code == 303
-    assert "Possible recall-to-listing action records" in queue.text
-    assert "MODEL No.: HANS0002" in queue.text
-    assert "26651" in queue.text
-    assert "Submitted identifier:</strong> model: HANS0002" in queue.text
-    assert "Brand equality alone is insufficient identity" in queue.text
-    assert "CPSC does not endorse this service" in queue.text
+    assert "Founder review pending" in queue.text
+    assert "HANS0002" not in queue.text
+    assert "26651" not in queue.text
+    assert "Brand equality alone is insufficient identity" not in queue.text
     async with evidence_database.connect() as connection:
         evidence_rows = await connection.scalar(
             text("SELECT count(*) FROM evidence_rows")
@@ -228,6 +256,204 @@ async def test_operator_receives_source_linked_possible_candidate_evidence(
             await connection.execute(
                 text("UPDATE evidence_rows SET recall_number = 'changed'")
             )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_candidate_queue_is_held_until_a_totp_verified_founder_approves_it(
+    postgres_url: str, evidence_database: AsyncEngine
+) -> None:
+    import_completed_fixture(postgres_url)
+    now = datetime(2026, 9, 4, 10, 0, tzinfo=UTC)
+    email_provider = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email_provider,
+        clock=lambda: now,
+        public_origin="https://test",
+        secure_cookies=True,
+        founder_emails=frozenset({"founder@example.com"}),
+    )
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as operator,
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as founder,
+    ):
+        await sign_in_and_declare(operator, email_provider, "operator@example.com")
+        form = await operator.get("/queues/new")
+        submitted = await operator.post(
+            "/queues",
+            content=urlencode(
+                [
+                    ("identifier_type", "model"),
+                    ("identifier_value", "HANS0002"),
+                    ("authorization", "authorized"),
+                    ("idempotency_key", form.headers["x-idempotency-key"]),
+                    ("csrf_token", form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+        pending = await operator.get(submitted.headers["location"])
+        assert pending.status_code == 200
+        assert "Founder review pending" in pending.text
+        assert "HANS0002" not in pending.text
+        assert "26651" not in pending.text
+        evaluation_id = submitted.headers["location"].rsplit("/", maxsplit=1)[-1]
+        operator_audit_attempt = await operator.get(f"/founder/audits/{evaluation_id}")
+
+        await sign_in_and_declare(founder, email_provider, "founder@example.com")
+        unverified_founder_audit_attempt = await founder.get(
+            f"/founder/audits/{evaluation_id}"
+        )
+        enrollment = await founder.get("/founder/totp/enroll")
+        secret = enrollment.text.split('data-totp-secret="')[1].split('"')[0]
+        enrolled = await founder.post(
+            "/founder/totp/enroll",
+            data={
+                "code": totp_code(secret, now),
+                "csrf_token": enrollment.cookies["ado_csrf"],
+            },
+        )
+        assert enrolled.status_code == 200
+        audit = await founder.get(f"/founder/audits/{evaluation_id}")
+        csrf_rejected_approval = await founder.post(
+            f"/founder/audits/{evaluation_id}/approve"
+        )
+        approved = await founder.post(
+            f"/founder/audits/{evaluation_id}/approve",
+            data={"csrf_token": audit.cookies["ado_csrf"]},
+        )
+        released = await operator.get(submitted.headers["location"])
+        founder_controls = await founder.get("/founder")
+        manually_paused = await founder.post(
+            "/founder/pause",
+            data={
+                "reason_category": "scope_ambiguity",
+                "csrf_token": founder_controls.cookies["ado_csrf"],
+            },
+        )
+        manual_pause_form = await operator.get("/queues/new")
+        manually_blocked = await operator.post(
+            "/queues",
+            content=urlencode(
+                [
+                    ("identifier_type", "upc"),
+                    ("identifier_value", "000123456789"),
+                    ("authorization", "authorized"),
+                    (
+                        "idempotency_key",
+                        manual_pause_form.headers["x-idempotency-key"],
+                    ),
+                    ("csrf_token", manual_pause_form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+        paused_controls = await founder.get("/founder")
+        resolved_manual_pause = await founder.post(
+            "/founder/pause/resolve",
+            data={
+                "resolution_note": "Audit procedure confirmed.",
+                "csrf_token": paused_controls.cookies["ado_csrf"],
+            },
+        )
+        second_form = await operator.get("/queues/new")
+        second_submission = await operator.post(
+            "/queues",
+            content=urlencode(
+                [
+                    ("identifier_type", "model"),
+                    ("identifier_value", "HANS0002"),
+                    ("authorization", "authorized"),
+                    ("idempotency_key", second_form.headers["x-idempotency-key"]),
+                    ("csrf_token", second_form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+        second_evaluation_id = second_submission.headers["location"].rsplit(
+            "/", maxsplit=1
+        )[-1]
+        rejection_page = await founder.get(f"/founder/audits/{second_evaluation_id}")
+        non_founder_pause_attempt = await operator.post(
+            "/founder/pause",
+            data={"csrf_token": operator.cookies["ado_csrf"]},
+        )
+        rejected, duplicate_rejection = await asyncio.gather(
+            founder.post(
+                f"/founder/audits/{second_evaluation_id}/reject",
+                data={
+                    "reason_category": "false_exact_candidate",
+                    "csrf_token": rejection_page.cookies["ado_csrf"],
+                },
+            ),
+            founder.post(
+                f"/founder/audits/{second_evaluation_id}/reject",
+                data={
+                    "reason_category": "false_exact_candidate",
+                    "csrf_token": rejection_page.cookies["ado_csrf"],
+                },
+            ),
+        )
+        blocked_form = await operator.get("/queues/new")
+        blocked_submission = await operator.post(
+            "/queues",
+            content=urlencode(
+                [
+                    ("identifier_type", "upc"),
+                    ("identifier_value", "000123456789"),
+                    ("authorization", "authorized"),
+                    ("idempotency_key", blocked_form.headers["x-idempotency-key"]),
+                    ("csrf_token", blocked_form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+        historical = await operator.get(submitted.headers["location"])
+
+    assert submitted.status_code == 303
+    assert operator_audit_attempt.status_code == 404
+    assert unverified_founder_audit_attempt.status_code == 404
+    assert audit.status_code == 200
+    assert "HANS0002" in audit.text
+    assert csrf_rejected_approval.status_code == 403
+    assert approved.status_code == 303
+    assert "Possible recall-to-listing action records" in released.text
+    assert manually_paused.status_code == 303
+    assert manually_blocked.status_code == 503
+    assert resolved_manual_pause.status_code == 303
+    assert non_founder_pause_attempt.status_code == 404
+    assert rejected.status_code == 303
+    assert duplicate_rejection.status_code == 404
+    assert blocked_submission.status_code == 503
+    assert "New evidence queues are paused." in blocked_submission.text
+    assert "Possible recall-to-listing action records" in historical.text
+    async with evidence_database.connect() as connection:
+        audit_rows = await connection.execute(
+            text(
+                "SELECT decision, reason_category FROM evaluation_audits "
+                "ORDER BY audited_at"
+            )
+        )
+        pause = await connection.execute(
+            text("SELECT is_paused, reason_category FROM global_pause_state")
+        )
+    assert audit_rows.all() == [
+        ("approved", None),
+        ("rejected", "false_exact_candidate"),
+    ]
+    assert pause.one() == (True, "false_exact_candidate")
 
 
 @pytest.mark.asyncio
@@ -272,7 +498,8 @@ async def test_retained_fixture_evaluation_preserves_evidence_lineage(
         contract_response = await client.get(created.headers["location"])
 
     assert created.status_code == 303
-    assert "HANS0002" in contract_response.text
+    assert "Founder review pending" in contract_response.text
+    assert "HANS0002" not in contract_response.text
     evaluation_id = created.headers["location"].rsplit("/", maxsplit=1)[-1]
     async with evidence_database.connect() as connection:
         lineage = (

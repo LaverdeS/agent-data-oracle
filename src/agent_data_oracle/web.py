@@ -32,7 +32,9 @@ from agent_data_oracle.config import (
 )
 from agent_data_oracle.database import Database
 from agent_data_oracle.evidence_queue import (
+    AuditDecision,
     EvidenceQueues,
+    GloballyPausedError,
     IdempotencyConflictError,
     SourceUnavailableError,
     SubmissionError,
@@ -318,6 +320,8 @@ def create_app(
                 error="This submission token was already used for different input.",
                 status_code=409,
             )
+        except GloballyPausedError:
+            return HTMLResponse("New evidence queues are paused.", status_code=503)
         except (SourceUnavailableError, SQLAlchemyError):
             return HTMLResponse(
                 "Evidence evaluation is temporarily unavailable.", status_code=503
@@ -335,15 +339,19 @@ def create_app(
             parsed_evaluation_id = UUID(evaluation_id)
         except ValueError:
             return HTMLResponse("Not found", status_code=404)
-        queue = await evidence_queues.released_contract(
+        queue = await evidence_queues.operator_queue(
             operator_id=operator.operator_id, evaluation_id=parsed_evaluation_id
         )
         if queue is None:
             return HTMLResponse("Not found", status_code=404)
+        if queue.is_pending_founder_audit:
+            return templates.TemplateResponse(request, "queue_pending.html")
+        if queue.contract is None:
+            return HTMLResponse("Not found", status_code=404)
         return templates.TemplateResponse(
             request,
             "queue.html",
-            {"evidence": serialize_evidence_contract(queue)},
+            {"evidence": serialize_evidence_contract(queue.contract)},
         )
 
     @app.get("/founder")
@@ -359,7 +367,114 @@ def create_app(
             return RedirectResponse("/founder/totp/enroll", status_code=303)
         if operator.founder_second_factor_at is None:
             return RedirectResponse("/founder/totp", status_code=303)
-        return templates.TemplateResponse(request, "founder.html")
+        pending_audits = await evidence_queues.pending_audits()
+        pause = await evidence_queues.global_pause()
+        return response_with_csrf(
+            request,
+            "founder.html",
+            {"pending_audits": pending_audits, "pause": pause},
+        )
+
+    async def totp_verified_founder(
+        request: Request,
+    ) -> AuthenticatedOperator | None:
+        operator = await authenticated_operator(request)
+        if (
+            operator is None
+            or not operator.is_founder
+            or operator.operator_type is None
+            or operator.founder_second_factor_at is None
+        ):
+            return None
+        return operator
+
+    @app.get("/founder/audits/{evaluation_id}", response_class=HTMLResponse)
+    async def inspect_founder_audit(request: Request, evaluation_id: str) -> Response:
+        if await totp_verified_founder(request) is None:
+            return HTMLResponse("Not found", status_code=404)
+        try:
+            parsed_evaluation_id = UUID(evaluation_id)
+        except ValueError:
+            return HTMLResponse("Not found", status_code=404)
+        queue = await evidence_queues.pending_audit_contract(
+            evaluation_id=parsed_evaluation_id
+        )
+        if queue is None:
+            return HTMLResponse("Not found", status_code=404)
+        return response_with_csrf(
+            request,
+            "queue.html",
+            {
+                "audit": True,
+                "evidence": serialize_evidence_contract(queue),
+                "evaluation_id": evaluation_id,
+            },
+        )
+
+    async def record_audit(
+        request: Request, evaluation_id: str, decision: AuditDecision
+    ) -> Response:
+        fields = await _form_fields(request)
+        if not csrf_is_valid(request, fields):
+            return HTMLResponse("Invalid request token", status_code=403)
+        founder = await totp_verified_founder(request)
+        if founder is None:
+            return HTMLResponse("Not found", status_code=404)
+        try:
+            parsed_evaluation_id = UUID(evaluation_id)
+            recorded = await evidence_queues.record_founder_audit(
+                evaluation_id=parsed_evaluation_id,
+                founder_id=founder.operator_id,
+                decision=decision,
+                reason_category=fields.get("reason_category"),
+            )
+        except (ValueError, TypeError):
+            return HTMLResponse("Invalid founder audit request", status_code=400)
+        if not recorded:
+            return HTMLResponse("Not found", status_code=404)
+        return RedirectResponse("/founder", status_code=303)
+
+    @app.post("/founder/audits/{evaluation_id}/approve")
+    async def approve_founder_audit(request: Request, evaluation_id: str) -> Response:
+        return await record_audit(request, evaluation_id, AuditDecision.APPROVED)
+
+    @app.post("/founder/audits/{evaluation_id}/reject")
+    async def reject_founder_audit(request: Request, evaluation_id: str) -> Response:
+        return await record_audit(request, evaluation_id, AuditDecision.REJECTED)
+
+    @app.post("/founder/pause")
+    async def pause_new_work(request: Request) -> Response:
+        fields = await _form_fields(request)
+        if not csrf_is_valid(request, fields):
+            return HTMLResponse("Invalid request token", status_code=403)
+        founder = await totp_verified_founder(request)
+        if founder is None:
+            return HTMLResponse("Not found", status_code=404)
+        try:
+            await evidence_queues.activate_manual_pause(
+                founder_id=founder.operator_id,
+                reason_category=fields.get("reason_category", ""),
+            )
+        except ValueError:
+            return HTMLResponse("A pause reason category is required.", status_code=400)
+        return RedirectResponse("/founder", status_code=303)
+
+    @app.post("/founder/pause/resolve")
+    async def resolve_new_work_pause(request: Request) -> Response:
+        fields = await _form_fields(request)
+        if not csrf_is_valid(request, fields):
+            return HTMLResponse("Invalid request token", status_code=403)
+        founder = await totp_verified_founder(request)
+        if founder is None:
+            return HTMLResponse("Not found", status_code=404)
+        try:
+            await evidence_queues.resolve_pause(
+                founder_id=founder.operator_id,
+                resolution_note=fields.get("resolution_note", ""),
+            )
+        except ValueError:
+            return HTMLResponse("A pause resolution note is required.", status_code=400)
+        return RedirectResponse("/founder", status_code=303)
 
     @app.get("/founder/totp/enroll")
     async def founder_totp_enrollment(request: Request) -> Response:
