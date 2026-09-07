@@ -1,4 +1,7 @@
+import hashlib
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import uuid4
 
 from agent_data_oracle.evidence_queue import (
@@ -35,6 +38,19 @@ def test_frozen_matching_corpus_has_one_hundred_reviewed_pairs() -> None:
     assert all(
         pair.source.official_url in pair.review_note for pair in FROZEN_MATCHING_PAIRS
     )
+
+
+def test_frozen_sources_are_bound_to_complete_retained_cpsc_payloads() -> None:
+    fixture_directory = Path("tests/fixtures/cpsc")
+    sources = {
+        pair.source.fixture_filename: pair.source for pair in FROZEN_MATCHING_PAIRS
+    }
+    for source in sources.values():
+        payload = (fixture_directory / source.fixture_filename).read_bytes()
+        assert hashlib.sha256(payload).hexdigest() == source.fixture_sha256
+        record = json.loads(payload)[0]
+        assert record["URL"] == source.official_url
+        assert record["RecallNumber"] == source.recall_number.replace("-", "")
 
 
 def test_frozen_matching_corpus_preserves_reviewed_classifications_and_bases() -> None:

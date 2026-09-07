@@ -18,6 +18,8 @@ class FrozenSource:
     name: str
     official_url: str
     record: dict[str, object]
+    fixture_filename: str
+    fixture_sha256: str
     recall_number: str
     source_revision: str
     recall_date_literal: str
@@ -54,6 +56,8 @@ PREDATOR = FrozenSource(
         "ProductUPCs": [{"UPC": "193175488718"}],
         "Title": "Harbor Freight Tools Recalls Predator 2000-Watt Power Stations",
     },
+    fixture_filename="recall-10329.json",
+    fixture_sha256="c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a",
     recall_number="25-366",
     source_revision="cpsc-2025-07-03-predator-2000w",
     recall_date_literal="2025-07-03T00:00:00",
@@ -75,6 +79,8 @@ HARPPA = FrozenSource(
         ),
         "Title": "HARPPA Recalls Nordi Toddler Tower Stools",
     },
+    fixture_filename="recall-10887.json",
+    fixture_sha256="afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c",
     recall_number="26-651",
     source_revision="cpsc-2026-07-31-harppa-nordi",
     recall_date_literal="2026-07-30T00:00:00",
@@ -97,6 +103,8 @@ BROOKSTONE = FrozenSource(
         ],
         "Title": "Southern Telecom Recalls Brookstone-branded Tabletop Fire Pits",
     },
+    fixture_filename="recall-10915.json",
+    fixture_sha256="756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d",
     recall_number="26-687",
     source_revision="cpsc-2026-08-13-brookstone-fire-pits",
     recall_date_literal="2026-08-13T00:00:00",
@@ -114,6 +122,8 @@ GRANITESTONE = FrozenSource(
         "ProductUPCs": [{"UPC": "080313081316"}],
         "Title": "E Mishan Recalls Granitestone Diamond Pro Blue Sauté Pans",
     },
+    fixture_filename="recall-10687.json",
+    fixture_sha256="59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a",
     recall_number="26-377",
     source_revision="cpsc-2026-04-02-granitestone-pans",
     recall_date_literal="2026-04-02T00:00:00",

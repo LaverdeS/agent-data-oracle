@@ -18,3 +18,8 @@ The gate is entirely offline. It verifies 50 expected candidates (including
 exact UPC and possible model/brand paths) and 50 source-referenced confusers,
 then requires zero false exact candidates and all mandatory evidence-contract
 fields on expected candidates.
+
+The full recorded API payload for Brookstone recall 26-687 is retained as
+`recall-10915.json`; it is the authoritative offline record for the structured
+UPC candidate cases. The existing `recall-10887.json` is the retained HARPPA
+record for the model, brand, and constraint cases.
