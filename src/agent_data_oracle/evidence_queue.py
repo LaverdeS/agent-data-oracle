@@ -674,9 +674,7 @@ class EvidenceQueues:
                     candidate_class=CandidateClass(row["candidate_class"]),
                     match_bases=tuple(
                         RecordMatch(
-                            candidate_class=CandidateClass(
-                                basis["candidate_class"]
-                            ),
+                            candidate_class=CandidateClass(basis["candidate_class"]),
                             matched_field=basis["matched_field"],
                             matched_literal=basis["matched_literal"],
                             identity_limit=basis["identity_limit"],

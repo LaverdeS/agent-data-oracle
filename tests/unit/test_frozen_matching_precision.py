@@ -117,8 +117,9 @@ def test_frozen_matching_corpus_preserves_reviewed_classifications_and_bases() -
     assert report.discrepancies == ()
 
 
-def test_matching_gate_reports_all_discrepancies_without_rewriting_expectations(
-) -> None:
+def test_matching_gate_reports_all_discrepancies_without_rewriting_expectations() -> (
+    None
+):
     incorrect_class = replace(
         FROZEN_MATCHING_PAIRS[0], expected_class=CandidateClass.POSSIBLE_IDENTIFIER
     )
