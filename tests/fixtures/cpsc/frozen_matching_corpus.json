@@ -1790,8 +1790,8 @@
         "sha256": "cf92f24a250dbcd809696872fdca48d8cf0f4c3e55a0d984f9e238230bc16c6d"
       },
       "identifier": {
-        "type": "brand",
-        "literal": "Round 2 LLC"
+        "type": "model",
+        "literal": "TRX113-06-15-23CH2"
       },
       "expected_class": null,
       "expected_match_basis": null,
@@ -1805,7 +1805,7 @@
         "source_revision_completed_at": "2026-09-07T00:00:00Z"
       },
       "official_notice": "https://www.cpsc.gov/Recalls/2025/Round-2-Recalls-Auto-World-Unassembled-Deluxe-Pit-Kit-Slot-Cars-Due-to-Ingestion-Hazard-Violation-of-Federal-Regulations-for-Magnets",
-      "review_note": "Auto World Deluxe Pit Kit slot cars: Reviewed plausible confuser Round 2 LLC: legal suffix is not exact title cue. Official notice: https://www.cpsc.gov/Recalls/2025/Round-2-Recalls-Auto-World-Unassembled-Deluxe-Pit-Kit-Slot-Cars-Due-to-Ingestion-Hazard-Violation-of-Federal-Regulations-for-Magnets"
+      "review_note": "Auto World Deluxe Pit Kit slot cars: Reviewed plausible batch/date-code confuser TRX113-06-15-23CH2: the retained notice constrains TRX113 to date code 06/15/23CH1, so this CH2 batch variant must not match. Official notice: https://www.cpsc.gov/Recalls/2025/Round-2-Recalls-Auto-World-Unassembled-Deluxe-Pit-Kit-Slot-Cars-Due-to-Ingestion-Hazard-Violation-of-Federal-Regulations-for-Magnets"
     },
     {
       "case_id": "cpsc-confuser-070",
