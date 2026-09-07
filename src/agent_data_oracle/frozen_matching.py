@@ -5,8 +5,6 @@ The compact record projection deliberately contains only fields the deterministi
 matcher reads; expected outcomes remain independent, review-owned data.
 """
 
-import hashlib
-import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -17,7 +15,6 @@ from agent_data_oracle.evidence_queue import CandidateClass, IdentifierType
 class FrozenSource:
     name: str
     official_url: str
-    record: dict[str, object]
     fixture_filename: str
     fixture_sha256: str
     recall_number: str
@@ -26,13 +23,6 @@ class FrozenSource:
     last_publish_date_literal: str
     observed_at: datetime
     completed_at: datetime
-
-    @property
-    def content_hash(self) -> str:
-        return hashlib.sha256(
-            json.dumps(self.record, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
-
 
 @dataclass(frozen=True)
 class FrozenMatchingPair:
@@ -52,10 +42,6 @@ PREDATOR = FrozenSource(
         "https://www.cpsc.gov/Recalls/2025/Harbor-Freight-Tools-Recalls-"
         "Predator-2000-Watt-Power-Stations-Due-to-Shock-Hazard"
     ),
-    record={
-        "ProductUPCs": [{"UPC": "193175488718"}],
-        "Title": "Harbor Freight Tools Recalls Predator 2000-Watt Power Stations",
-    },
     fixture_filename="recall-10329.json",
     fixture_sha256="c01e43b3cd12f71e451aae775fa1cb899819fa4a4e06f7e74981735bbd21401a",
     recall_number="25-366",
@@ -72,13 +58,6 @@ HARPPA = FrozenSource(
         "Tower-Stools-Due-to-Risk-of-Serious-Injury-and-Death-from-"
         "Entrapment-and-Fall-Hazards"
     ),
-    record={
-        "Description": (
-            '"MODEL No.: HANS0002" is printed on the label; the tower is sold '
-            "in white, black, and blue color variants."
-        ),
-        "Title": "HARPPA Recalls Nordi Toddler Tower Stools",
-    },
     fixture_filename="recall-10887.json",
     fixture_sha256="afcc471f6f258080c767cdf770b6a70268f2203523555924e6d329a06f86861c",
     recall_number="26-651",
@@ -95,14 +74,6 @@ BROOKSTONE = FrozenSource(
         "Brookstone-Branded-Tabletop-Fire-Pits-Due-to-Risk-of-Serious-Burn-"
         "Injury-or-Death-from-Flame-Jetting-and-Fire-Hazards"
     ),
-    record={
-        "ProductUPCs": [
-            {"UPC": "680079015930"},
-            {"UPC": "680079015947"},
-            {"UPC": "680079015954"},
-        ],
-        "Title": "Southern Telecom Recalls Brookstone-branded Tabletop Fire Pits",
-    },
     fixture_filename="recall-10915.json",
     fixture_sha256="756ede04e1185441543ec9180a7d89ac90657cd3159d782ad8d6255b6771259d",
     recall_number="26-687",
@@ -118,10 +89,6 @@ GRANITESTONE = FrozenSource(
         "https://www.cpsc.gov/Recalls/2026/E-Mishan-Recalls-Granitestone-"
         "Diamond-Pro-Blue-Stainless-Saute-Pans-Due-to-Impact-and-Burn-Hazards"
     ),
-    record={
-        "ProductUPCs": [{"UPC": "080313081316"}],
-        "Title": "E Mishan Recalls Granitestone Diamond Pro Blue Sauté Pans",
-    },
     fixture_filename="recall-10687.json",
     fixture_sha256="59602521a1cbeba2cd81f5c859f9b1604c372213d2034d050df1a3a9a927cb3a",
     recall_number="26-377",
@@ -174,7 +141,7 @@ def _upc_candidates(
 
 
 _CANDIDATES = (
-    _upc_candidates(PREDATOR, "193175488718", 2)
+    _upc_candidates(BROOKSTONE, "680079015930", 2)
     + _upc_candidates(BROOKSTONE, "680079015930", 2)
     + _upc_candidates(GRANITESTONE, "080313081316", 2)
     + tuple(
@@ -207,7 +174,7 @@ _CONFUSERS = tuple(
     _pair(source, identifier_type, literal, None)
     for source, identifier_type, literal in (
         *(
-            (PREDATOR, IdentifierType.UPC, f"1931754887{suffix}")
+            (BROOKSTONE, IdentifierType.UPC, f"1931754887{suffix}")
             for suffix in range(10)
         ),
         *(

@@ -17,6 +17,8 @@ from agent_data_oracle.evidence_queue import (
 )
 from agent_data_oracle.frozen_matching import FROZEN_MATCHING_PAIRS
 
+FIXTURE_DIRECTORY = Path("tests/fixtures/cpsc")
+
 
 def _submitted_identifier(pair: object) -> SubmittedIdentifier:
     identifier_type = pair.identifier_type  # type: ignore[union-attr]
@@ -28,9 +30,17 @@ def _submitted_identifier(pair: object) -> SubmittedIdentifier:
     )
 
 
+def _retained_record(pair: object) -> dict[str, object]:
+    source = pair.source  # type: ignore[union-attr]
+    payload = (FIXTURE_DIRECTORY / source.fixture_filename).read_bytes()
+    assert hashlib.sha256(payload).hexdigest() == source.fixture_sha256
+    record = json.loads(payload)[0]
+    assert isinstance(record, dict)
+    return record
+
+
 def test_frozen_matching_corpus_has_one_hundred_reviewed_pairs() -> None:
     assert len(FROZEN_MATCHING_PAIRS) == 100
-    assert all(pair.source.content_hash for pair in FROZEN_MATCHING_PAIRS)
     assert all(
         pair.source.observed_at <= pair.source.completed_at
         for pair in FROZEN_MATCHING_PAIRS
@@ -41,12 +51,11 @@ def test_frozen_matching_corpus_has_one_hundred_reviewed_pairs() -> None:
 
 
 def test_frozen_sources_are_bound_to_complete_retained_cpsc_payloads() -> None:
-    fixture_directory = Path("tests/fixtures/cpsc")
     sources = {
         pair.source.fixture_filename: pair.source for pair in FROZEN_MATCHING_PAIRS
     }
     for source in sources.values():
-        payload = (fixture_directory / source.fixture_filename).read_bytes()
+        payload = (FIXTURE_DIRECTORY / source.fixture_filename).read_bytes()
         assert hashlib.sha256(payload).hexdigest() == source.fixture_sha256
         record = json.loads(payload)[0]
         assert record["URL"] == source.official_url
@@ -58,7 +67,7 @@ def test_frozen_matching_corpus_preserves_reviewed_classifications_and_bases() -
     false_exact_candidates = []
     for pair in FROZEN_MATCHING_PAIRS:
         submitted = _submitted_identifier(pair)
-        matches = match_cpsc_record(submitted, pair.source.record)
+        matches = match_cpsc_record(submitted, _retained_record(pair))
         actual_class = min(
             (match.candidate_class for match in matches),
             default=None,
@@ -100,7 +109,8 @@ def test_every_expected_candidate_has_the_mandatory_evidence_contract_fields() -
         if pair.expected_class is None:
             continue
         submitted = _submitted_identifier(pair)
-        constraints = _source_constraints(pair.source.record)
+        record = _retained_record(pair)
+        constraints = _source_constraints(record)
         assert constraints["scope"] == pair.expected_constraint_scope
         contract = EvidenceQueueContract(
             evaluation_id=uuid4(),
@@ -120,12 +130,12 @@ def test_every_expected_candidate_has_the_mandatory_evidence_contract_fields() -
                             matched_literal=pair.expected_literal or "",
                         ),
                     ),
-                    affected_product_evidence=pair.source.record,
+                    affected_product_evidence=record,
                     constraints=constraints,
-                    recall_number=pair.source.recall_number,
+                    recall_number=record["RecallNumber"],
                     official_url=pair.source.official_url,
-                    recall_date_literal=pair.source.recall_date_literal,
-                    last_publish_date_literal=pair.source.last_publish_date_literal,
+                    recall_date_literal=record["RecallDate"],
+                    last_publish_date_literal=record["LastPublishDate"],
                     source_observed_at=pair.source.observed_at,
                     source_revision_completed_at=pair.source.completed_at,
                 ),
