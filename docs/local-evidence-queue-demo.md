@@ -1,4 +1,4 @@
-# View a local candidate queue
+# View a local evidence queue
 
 Use this only with the local PostgreSQL database. It creates a test account and
 a short-lived local browser session; it does not send email or contact CPSC.
@@ -25,7 +25,8 @@ uv run agent-data-oracle web --host 127.0.0.1 --port 8080
 ```
 
 Keep that terminal running. The fixture includes a `HANS0002` model and the
-`HARPPA` brand, so it gives the candidate view something to show.
+`HARPPA` brand, so it gives the evidence queue two possible
+recall-to-listing action records to show.
 
 ## Open an authenticated queue
 
@@ -50,8 +51,8 @@ Refresh the page, open **Your queues** → **New evidence queue**, and submit:
 - Brand: `HARPPA`
 
 Check the authorization box and create the queue. You should see two possible
-candidate rows with their match bases, official CPSC notice, source times, and
-limitation language.
+recall-to-listing action records with their match bases, official CPSC notice,
+source times, and limitation language.
 
 The console-set cookie is deliberately local-only and is not marked HttpOnly.
 Close the local browser profile or clear cookies when finished. Never use this

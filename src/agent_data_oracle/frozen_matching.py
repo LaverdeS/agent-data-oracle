@@ -37,6 +37,17 @@ class FrozenSource:
 
 
 @dataclass(frozen=True)
+class FrozenEvidence:
+    official_url: str
+    recall_number: str
+    recall_date_literal: str
+    last_publish_date_literal: str
+    constraint_scope: str
+    source_observed_at: datetime
+    source_revision_completed_at: datetime
+
+
+@dataclass(frozen=True)
 class FrozenMatchingPair:
     case_id: str
     review_note: str
@@ -47,6 +58,7 @@ class FrozenMatchingPair:
     expected_field: str | None
     expected_literal: str | None
     expected_constraint_scope: str
+    expected_evidence: FrozenEvidence
 
 
 @dataclass(frozen=True)
@@ -176,6 +188,17 @@ def _case_pair(case: object) -> FrozenMatchingPair:
         expected_constraint_scope=_required_string(
             expected_evidence, "constraint_scope"
         ),
+        expected_evidence=FrozenEvidence(
+            official_url=_required_string(expected_evidence, "official_url"),
+            recall_number=_required_string(expected_evidence, "recall_number"),
+            recall_date_literal=_required_string(expected_evidence, "recall_date"),
+            last_publish_date_literal=_required_string(
+                expected_evidence, "last_publish_date"
+            ),
+            constraint_scope=_required_string(expected_evidence, "constraint_scope"),
+            source_observed_at=observed_at,
+            source_revision_completed_at=completed_at,
+        ),
     )
 
 
@@ -211,6 +234,25 @@ def _submitted_identifier(pair: FrozenMatchingPair) -> SubmittedIdentifier:
     )
 
 
+def retained_record(pair: FrozenMatchingPair) -> dict[str, Any]:
+    """Return the content-addressed source record bound to a corpus case."""
+    return _record_for_fixture(pair.source.fixture_filename, pair.source.fixture_sha256)
+
+
+def _actual_evidence(
+    pair: FrozenMatchingPair, record: dict[str, Any]
+) -> FrozenEvidence:
+    return FrozenEvidence(
+        official_url=_payload_string(record, "URL"),
+        recall_number=_payload_string(record, "RecallNumber"),
+        recall_date_literal=_payload_string(record, "RecallDate"),
+        last_publish_date_literal=_payload_string(record, "LastPublishDate"),
+        constraint_scope=_source_constraints(record)["scope"],
+        source_observed_at=pair.source.observed_at,
+        source_revision_completed_at=pair.source.completed_at,
+    )
+
+
 def matching_report(
     pairs: tuple[FrozenMatchingPair, ...],
 ) -> FrozenMatchingReport:
@@ -218,9 +260,7 @@ def matching_report(
     discrepancies: list[FrozenDiscrepancy] = []
     false_exact_candidates: list[str] = []
     for pair in pairs:
-        record = _record_for_fixture(
-            pair.source.fixture_filename, pair.source.fixture_sha256
-        )
+        record = retained_record(pair)
         matches = match_cpsc_record(_submitted_identifier(pair), record)
         actual_class = min(
             (match.candidate_class for match in matches),
@@ -253,6 +293,19 @@ def matching_report(
                 discrepancies.append(
                     FrozenDiscrepancy(
                         pair.case_id, "literal", pair.expected_literal, actual_literal
+                    )
+                )
+        actual_evidence = _actual_evidence(pair, record)
+        for field in FrozenEvidence.__dataclass_fields__:
+            expected_value = getattr(pair.expected_evidence, field)
+            actual_value = getattr(actual_evidence, field)
+            if expected_value != actual_value:
+                discrepancies.append(
+                    FrozenDiscrepancy(
+                        pair.case_id,
+                        f"evidence.{field}",
+                        str(expected_value),
+                        str(actual_value),
                     )
                 )
     return FrozenMatchingReport(tuple(discrepancies), tuple(false_exact_candidates))

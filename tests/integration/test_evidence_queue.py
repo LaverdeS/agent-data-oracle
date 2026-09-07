@@ -280,12 +280,15 @@ async def test_retained_fixture_evaluation_preserves_evidence_lineage(
                 text(
                     "SELECT evaluations.source_revision_id, revisions.state, "
                     "revisions.completed_at, rows.recall_number, rows.official_url, "
-                    "rows.source_revision_completed_at "
+                    "rows.source_revision_completed_at, current.revision_id "
+                    "AS current_revision_id "
                     "FROM evidence_evaluations AS evaluations "
                     "JOIN cpsc_source_revisions AS revisions "
                     "ON revisions.revision_id = evaluations.source_revision_id "
                     "JOIN evidence_rows AS rows "
                     "ON rows.evaluation_id = evaluations.evaluation_id "
+                    "JOIN cpsc_current_source_revision AS current "
+                    "ON current.singleton = true "
                     "WHERE evaluations.evaluation_id = CAST(:evaluation_id AS uuid)"
                 ),
                 {"evaluation_id": evaluation_id},
@@ -293,9 +296,19 @@ async def test_retained_fixture_evaluation_preserves_evidence_lineage(
         ).mappings().one()
 
     assert lineage["state"] == "completed"
+    assert lineage["source_revision_id"] == lineage["current_revision_id"]
     assert lineage["recall_number"] == "26651"
     assert lineage["official_url"].endswith("Entrapment-and-Fall-Hazards")
     assert lineage["source_revision_completed_at"] == lineage["completed_at"]
+    with pytest.raises(DBAPIError):
+        async with evidence_database.begin() as connection:
+            await connection.execute(
+                text(
+                    "UPDATE evidence_evaluations SET matcher_version = 'changed' "
+                    "WHERE evaluation_id = CAST(:evaluation_id AS uuid)"
+                ),
+                {"evaluation_id": evaluation_id},
+            )
 
 
 @pytest.mark.asyncio

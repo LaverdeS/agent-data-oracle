@@ -11,9 +11,9 @@ from agent_data_oracle.evidence_queue import (
     CandidateClass,
     EvidenceQueueContract,
     EvidenceRow,
-    RecordMatch,
     SubmittedIdentifier,
     _source_constraints,
+    match_cpsc_record,
     normalize_identifier,
     serialize_evidence_contract,
 )
@@ -22,6 +22,7 @@ from agent_data_oracle.frozen_matching import (
     FrozenCorpusError,
     load_frozen_matching_pairs,
     matching_report,
+    retained_record,
 )
 
 FIXTURE_DIRECTORY = Path("tests/fixtures/cpsc")
@@ -133,6 +134,22 @@ def test_matching_gate_reports_all_discrepancies_without_rewriting_expectations(
     ]
     assert incorrect_class.expected_class is CandidateClass.POSSIBLE_IDENTIFIER
 
+    incorrect_evidence = replace(
+        FROZEN_MATCHING_PAIRS[2],
+        expected_evidence=replace(
+            FROZEN_MATCHING_PAIRS[2].expected_evidence,
+            official_url="https://incorrect.example",
+            constraint_scope="not_machine_parsed",
+        ),
+    )
+
+    report = matching_report((incorrect_evidence,))
+
+    assert [discrepancy.kind for discrepancy in report.discrepancies] == [
+        "evidence.official_url",
+        "evidence.constraint_scope",
+    ]
+
 
 def test_every_expected_candidate_has_the_mandatory_evidence_contract_fields() -> None:
     required = {
@@ -153,7 +170,9 @@ def test_every_expected_candidate_has_the_mandatory_evidence_contract_fields() -
         if pair.expected_class is None:
             continue
         submitted = _submitted_identifier(pair)
-        record = _retained_record(pair)
+        record = retained_record(pair)
+        matches = match_cpsc_record(submitted, record)
+        assert matches
         constraints = _source_constraints(record)
         assert constraints["scope"] == pair.expected_constraint_scope
         contract = EvidenceQueueContract(
@@ -166,20 +185,16 @@ def test_every_expected_candidate_has_the_mandatory_evidence_contract_fields() -
             candidates=(
                 EvidenceRow(
                     submitted_identifier=submitted,
-                    candidate_class=pair.expected_class,
-                    match_bases=(
-                        RecordMatch(
-                            candidate_class=pair.expected_class,
-                            matched_field=pair.expected_field or "",
-                            matched_literal=pair.expected_literal or "",
-                        ),
-                    ),
+                    candidate_class=matches[0].candidate_class,
+                    match_bases=matches,
                     affected_product_evidence=record,
                     constraints=constraints,
-                    recall_number=record["RecallNumber"],
-                    official_url=pair.source.official_url,
-                    recall_date_literal=record["RecallDate"],
-                    last_publish_date_literal=record["LastPublishDate"],
+                    recall_number=pair.expected_evidence.recall_number,
+                    official_url=pair.expected_evidence.official_url,
+                    recall_date_literal=pair.expected_evidence.recall_date_literal,
+                    last_publish_date_literal=(
+                        pair.expected_evidence.last_publish_date_literal
+                    ),
                     source_observed_at=pair.source.observed_at,
                     source_revision_completed_at=pair.source.completed_at,
                 ),
