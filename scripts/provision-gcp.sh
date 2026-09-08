@@ -214,7 +214,11 @@ pause "Press Enter after billing is linked to the production project."
 
 stage "GitHub deployment approval"
 open_url "https://github.com/LaverdeS/agent-data-oracle/settings/environments"
-step "Create the production environment, protect main, and require founder approval for deployment."
+step "Create the production environment and add yourself as its required reviewer. Leave Prevent self-review off if you are the only reviewer."
+step "Open Settings -> Branches (or Rulesets) and protect main. Enable Require a pull request before merging; leave required approving reviews at 0 for this solo workflow."
+step "Enable Require status checks and select quality, secret-scan, and terraform. Leave Require branches to be up to date off to avoid repeat builds."
+step "Enable Require conversation resolution. Leave signed commits, linear history, merge queue, and deployment-before-merge off for now."
+step "Do not allow force pushes or branch deletion. Keep the admin bypass only for emergency recovery."
 step "Do not add Google service-account keys or production secrets to GitHub."
 pause "Press Enter after the production environment is protected."
 

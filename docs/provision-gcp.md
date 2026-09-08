@@ -22,8 +22,15 @@ customer account, or authorize collection of validation data.
 3. Create a separate founder-owned backup project. Backup bucket and scheduled
    backup provisioning belong to ticket #33; do not grant the backup writer
    broader project access in this ticket.
-4. In GitHub, protect `main`, create the `production` environment, and require
-   the founder's deployment approval. The delivery workflow is manual only.
+4. In GitHub, create the `production` environment and add the founder as its
+   required reviewer. Leave **Prevent self-review** off when the founder is the
+   only reviewer. Protect `main` with a lean rule: require a pull request,
+   require the existing `quality`, `secret-scan`, and `terraform` checks, leave
+   the branch-up-to-date requirement off, and require conversation resolution.
+   Do not allow force pushes or branch deletion. Leave signed commits, linear
+   history, merge queue, and deployment-before-merge disabled for now. The
+   delivery workflow remains manual; the environment approval is the live
+   deployment gate, not an approval required for every code change.
 5. In Google Workspace, create a dedicated sender mailbox and keep its recovery
    controls with the founder. Workspace email processing is the documented
    non-Frankfurt transfer exception.
