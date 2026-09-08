@@ -202,6 +202,13 @@ class AuditDecision(StrEnum):
     REJECTED = "rejected"
 
 
+class ReviewOutcome(StrEnum):
+    REVIEWED_SAME_PRODUCT = "reviewed_same_product"
+    REVIEWED_DIFFERENT_PRODUCT = "reviewed_different_product"
+    NEED_MORE_IDENTIFIERS = "need_more_identifiers"
+    NOT_SURE = "not_sure"
+
+
 @dataclass(frozen=True)
 class OperatorQueue:
     contract: EvidenceQueueContract | None
@@ -221,6 +228,31 @@ class GlobalPause:
 
 
 @dataclass(frozen=True)
+class AgentReviewReport:
+    outcome: ReviewOutcome
+    reported_at: datetime
+
+
+@dataclass(frozen=True)
+class HumanAcknowledgement:
+    outcome: ReviewOutcome
+    acknowledged_at: datetime
+    supersedes_previous: bool = False
+
+
+@dataclass(frozen=True)
+class EvaluationReviews:
+    current_human_acknowledgement: HumanAcknowledgement | None
+    human_acknowledgement_history: tuple[HumanAcknowledgement, ...]
+    agent_review_reports: tuple[AgentReviewReport, ...]
+
+
+@dataclass(frozen=True)
+class SourceEvidenceRetrieval:
+    official_url: str | None
+
+
+@dataclass(frozen=True)
 class EvidenceRow:
     submitted_identifier: SubmittedIdentifier
     candidate_class: CandidateClass
@@ -233,6 +265,7 @@ class EvidenceRow:
     last_publish_date_literal: str | None
     source_observed_at: datetime
     source_revision_completed_at: datetime
+    evidence_row_id: UUID | None = None
 
 
 def serialize_evidence_contract(contract: EvidenceQueueContract) -> dict[str, object]:
@@ -261,6 +294,11 @@ def serialize_evidence_contract(contract: EvidenceQueueContract) -> dict[str, ob
                 "affected_product_evidence": row.affected_product_evidence,
                 "candidate_class": row.candidate_class,
                 "constraints": row.constraints,
+                "evidence_row_id": (
+                    str(row.evidence_row_id)
+                    if row.evidence_row_id is not None
+                    else None
+                ),
                 "last_publish_date": row.last_publish_date_literal,
                 "match_bases": [
                     {
@@ -709,7 +747,8 @@ class EvidenceQueues:
                 (
                     await connection.execute(
                         text(
-                            "SELECT input_position, candidate_class, match_bases, "
+                            "SELECT evidence_row_id, input_position, candidate_class, "
+                            "match_bases, "
                             "affected_product_evidence, constraints, recall_number, "
                             "official_url, recall_date_literal, "
                             "last_publish_date_literal, source_observed_at, "
@@ -743,6 +782,7 @@ class EvidenceQueues:
             inputs=submitted_inputs,
             candidates=tuple(
                 EvidenceRow(
+                    evidence_row_id=row["evidence_row_id"],
                     submitted_identifier=submitted_inputs[row["input_position"]],
                     candidate_class=CandidateClass(row["candidate_class"]),
                     match_bases=tuple(
@@ -798,6 +838,257 @@ class EvidenceQueues:
         if evaluation is None:
             return None
         return await self._contract_from_evaluation(evaluation)
+
+    async def record_agent_review(
+        self,
+        *,
+        operator_id: UUID,
+        agent_key_id: UUID,
+        evaluation_id: UUID,
+        outcome: ReviewOutcome,
+    ) -> AgentReviewReport | None:
+        """Append an agent's report only to its operator's released evaluation."""
+        reported_at = self._clock()
+        async with self._database.transaction() as connection:
+            evaluation = await connection.scalar(
+                text(
+                    "SELECT evaluations.evaluation_id "
+                    "FROM evidence_evaluations AS evaluations "
+                    "LEFT JOIN evaluation_releases AS releases "
+                    "ON releases.evaluation_id = evaluations.evaluation_id "
+                    "WHERE evaluations.evaluation_id = :evaluation_id "
+                    "AND evaluations.operator_id = :operator_id "
+                    "AND COALESCE(evaluations.released_at, releases.released_at) "
+                    "IS NOT NULL FOR UPDATE OF evaluations"
+                ),
+                {"evaluation_id": evaluation_id, "operator_id": operator_id},
+            )
+            if not isinstance(evaluation, UUID):
+                return None
+            await connection.execute(
+                text(
+                    "INSERT INTO agent_review_reports "
+                    "(report_id, evaluation_id, operator_id, agent_key_id, outcome, "
+                    "reported_at) VALUES (:report_id, :evaluation_id, :operator_id, "
+                    ":agent_key_id, :outcome, :reported_at)"
+                ),
+                {
+                    "report_id": uuid4(),
+                    "evaluation_id": evaluation_id,
+                    "operator_id": operator_id,
+                    "agent_key_id": agent_key_id,
+                    "outcome": outcome,
+                    "reported_at": reported_at,
+                },
+            )
+        return AgentReviewReport(outcome=outcome, reported_at=reported_at)
+
+    async def record_human_acknowledgement(
+        self,
+        *,
+        operator_id: UUID,
+        evaluation_id: UUID,
+        outcome: ReviewOutcome,
+    ) -> HumanAcknowledgement | None:
+        """Append a human report without rewriting an earlier acknowledgement."""
+        acknowledged_at = self._clock()
+        async with self._database.transaction() as connection:
+            await connection.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+                {"key": f"human-acknowledgement:{evaluation_id}"},
+            )
+            evaluation = await connection.scalar(
+                text(
+                    "SELECT evaluations.evaluation_id "
+                    "FROM evidence_evaluations AS evaluations "
+                    "LEFT JOIN evaluation_releases AS releases "
+                    "ON releases.evaluation_id = evaluations.evaluation_id "
+                    "WHERE evaluations.evaluation_id = :evaluation_id "
+                    "AND evaluations.operator_id = :operator_id "
+                    "AND COALESCE(evaluations.released_at, releases.released_at) "
+                    "IS NOT NULL FOR UPDATE OF evaluations"
+                ),
+                {"evaluation_id": evaluation_id, "operator_id": operator_id},
+            )
+            if not isinstance(evaluation, UUID):
+                return None
+            prior_acknowledgement_id = await connection.scalar(
+                text(
+                    "SELECT acknowledgements.acknowledgement_id "
+                    "FROM human_review_acknowledgements AS acknowledgements "
+                    "WHERE acknowledgements.evaluation_id = :evaluation_id "
+                    "AND acknowledgements.operator_id = :operator_id "
+                    "AND NOT EXISTS (SELECT 1 FROM human_review_acknowledgements "
+                    "AS superseding WHERE superseding.supersedes_acknowledgement_id "
+                    "= acknowledgements.acknowledgement_id)"
+                ),
+                {"evaluation_id": evaluation_id, "operator_id": operator_id},
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO human_review_acknowledgements "
+                    "(acknowledgement_id, evaluation_id, operator_id, outcome, "
+                    "supersedes_acknowledgement_id, acknowledged_at) VALUES "
+                    "(:acknowledgement_id, :evaluation_id, :operator_id, :outcome, "
+                    ":supersedes_acknowledgement_id, :acknowledged_at)"
+                ),
+                {
+                    "acknowledgement_id": uuid4(),
+                    "evaluation_id": evaluation_id,
+                    "operator_id": operator_id,
+                    "outcome": outcome,
+                    "supersedes_acknowledgement_id": prior_acknowledgement_id,
+                    "acknowledged_at": acknowledged_at,
+                },
+            )
+        return HumanAcknowledgement(outcome=outcome, acknowledged_at=acknowledged_at)
+
+    async def review_history(
+        self, *, operator_id: UUID, evaluation_id: UUID
+    ) -> EvaluationReviews:
+        async with self._database.connection() as connection:
+            acknowledgements = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT acknowledgements.outcome, "
+                            "acknowledgements.acknowledged_at, "
+                            "acknowledgements.supersedes_acknowledgement_id "
+                            "IS NOT NULL "
+                            "AS supersedes_previous, NOT EXISTS (SELECT 1 "
+                            "FROM human_review_acknowledgements AS superseding "
+                            "WHERE superseding.supersedes_acknowledgement_id = "
+                            "acknowledgements.acknowledgement_id) AS is_current "
+                            "FROM human_review_acknowledgements AS acknowledgements "
+                            "WHERE acknowledgements.evaluation_id = :evaluation_id "
+                            "AND acknowledgements.operator_id = :operator_id "
+                            "ORDER BY acknowledgements.acknowledged_at, "
+                            "acknowledgements.acknowledgement_id"
+                        ),
+                        {"evaluation_id": evaluation_id, "operator_id": operator_id},
+                    )
+                )
+                .mappings()
+                .all()
+            )
+            agent_reports = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT outcome, reported_at FROM agent_review_reports "
+                            "WHERE evaluation_id = :evaluation_id "
+                            "AND operator_id = :operator_id "
+                            "ORDER BY reported_at, report_id"
+                        ),
+                        {"evaluation_id": evaluation_id, "operator_id": operator_id},
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        history = tuple(
+            HumanAcknowledgement(
+                outcome=ReviewOutcome(row["outcome"]),
+                acknowledged_at=row["acknowledged_at"],
+                supersedes_previous=bool(row["supersedes_previous"]),
+            )
+            for row in acknowledgements
+        )
+        current = next(
+            (
+                acknowledgement
+                for acknowledgement, row in zip(history, acknowledgements, strict=True)
+                if row["is_current"]
+            ),
+            None,
+        )
+        return EvaluationReviews(
+            current_human_acknowledgement=current,
+            human_acknowledgement_history=history,
+            agent_review_reports=tuple(
+                AgentReviewReport(
+                    outcome=ReviewOutcome(row["outcome"]),
+                    reported_at=row["reported_at"],
+                )
+                for row in agent_reports
+            ),
+        )
+
+    async def record_source_evidence_retrieval(
+        self,
+        *,
+        operator_id: UUID,
+        evaluation_id: UUID,
+        agent_key_id: UUID | None = None,
+        evidence_row_id: UUID | None = None,
+    ) -> SourceEvidenceRetrieval | None:
+        """Record access to released source evidence without retaining input values."""
+        retrieved_at = self._clock()
+        async with self._database.transaction() as connection:
+            if evidence_row_id is None:
+                evaluation = await connection.scalar(
+                    text(
+                        "SELECT evaluations.evaluation_id "
+                        "FROM evidence_evaluations AS evaluations "
+                        "LEFT JOIN evaluation_releases AS releases "
+                        "ON releases.evaluation_id = evaluations.evaluation_id "
+                        "WHERE evaluations.evaluation_id = :evaluation_id "
+                        "AND evaluations.operator_id = :operator_id "
+                        "AND COALESCE(evaluations.released_at, releases.released_at) "
+                        "IS NOT NULL"
+                    ),
+                    {"evaluation_id": evaluation_id, "operator_id": operator_id},
+                )
+                official_url: str | None = None
+            else:
+                row = (
+                    (
+                        await connection.execute(
+                            text(
+                                "SELECT rows.official_url "
+                                "FROM evidence_evaluations AS evaluations "
+                                "JOIN evidence_rows AS rows ON rows.evaluation_id "
+                                "= evaluations.evaluation_id "
+                                "LEFT JOIN evaluation_releases AS releases "
+                                "ON releases.evaluation_id = evaluations.evaluation_id "
+                                "WHERE evaluations.evaluation_id = :evaluation_id "
+                                "AND evaluations.operator_id = :operator_id "
+                                "AND rows.evidence_row_id = :evidence_row_id "
+                                "AND COALESCE(evaluations.released_at, "
+                                "releases.released_at) IS NOT NULL"
+                            ),
+                            {
+                                "evaluation_id": evaluation_id,
+                                "operator_id": operator_id,
+                                "evidence_row_id": evidence_row_id,
+                            },
+                        )
+                    )
+                    .mappings()
+                    .one_or_none()
+                )
+                evaluation = evaluation_id if row is not None else None
+                official_url = row["official_url"] if row is not None else None
+            if not isinstance(evaluation, UUID):
+                return None
+            await connection.execute(
+                text(
+                    "INSERT INTO source_evidence_retrievals "
+                    "(retrieval_id, evaluation_id, operator_id, agent_key_id, "
+                    "evidence_row_id, retrieved_at) VALUES (:retrieval_id, "
+                    ":evaluation_id, :operator_id, :agent_key_id, :evidence_row_id, "
+                    ":retrieved_at)"
+                ),
+                {
+                    "retrieval_id": uuid4(),
+                    "evaluation_id": evaluation_id,
+                    "operator_id": operator_id,
+                    "agent_key_id": agent_key_id,
+                    "evidence_row_id": evidence_row_id,
+                    "retrieved_at": retrieved_at,
+                },
+            )
+        return SourceEvidenceRetrieval(official_url=official_url)
 
     async def operator_queue(
         self, *, operator_id: UUID, evaluation_id: UUID

@@ -43,10 +43,12 @@ from agent_data_oracle.config import (
 from agent_data_oracle.database import Database
 from agent_data_oracle.evidence_queue import (
     AuditDecision,
+    EvaluationReviews,
     EvidenceQueueContract,
     EvidenceQueues,
     GloballyPausedError,
     IdempotencyConflictError,
+    ReviewOutcome,
     SourceUnavailableError,
     SubmissionError,
     serialize_evidence_contract,
@@ -151,22 +153,26 @@ def create_app(
         context: dict[str, object] | None = None,
         *,
         status_code: int = 200,
+        reuse_current_token: bool = False,
     ) -> Response:
-        csrf_token = human_access.issue_csrf_token()
+        csrf_token = (
+            request.cookies.get("ado_csrf") if reuse_current_token else None
+        ) or human_access.issue_csrf_token()
         response = templates.TemplateResponse(
             request,
             template_name,
             {"csrf_token": csrf_token, **(context or {})},
             status_code=status_code,
         )
-        response.set_cookie(
-            "ado_csrf",
-            csrf_token,
-            secure=use_secure_cookies,
-            httponly=True,
-            samesite="lax",
-            max_age=900,
-        )
+        if request.cookies.get("ado_csrf") != csrf_token:
+            response.set_cookie(
+                "ado_csrf",
+                csrf_token,
+                secure=use_secure_cookies,
+                httponly=True,
+                samesite="lax",
+                max_age=900,
+            )
         return response
 
     async def authenticated_operator(
@@ -202,6 +208,7 @@ def create_app(
         *,
         evaluation_id: UUID,
         contract: EvidenceQueueContract,
+        reviews: EvaluationReviews,
         status_code: int = 200,
     ) -> JSONResponse:
         return JSONResponse(
@@ -209,6 +216,38 @@ def create_app(
                 "contract_version": "v1",
                 "evaluation_id": str(evaluation_id),
                 "evidence": serialize_evidence_contract(contract),
+                "reviews": {
+                    "agent_review_reports": [
+                        {
+                            "outcome": report.outcome,
+                            "reported_at": report.reported_at.isoformat(),
+                            "report_type": "agent_review",
+                        }
+                        for report in reviews.agent_review_reports
+                    ],
+                    "current_human_acknowledgement": (
+                        None
+                        if reviews.current_human_acknowledgement is None
+                        else {
+                            "acknowledged_at": (
+                                reviews.current_human_acknowledgement.acknowledged_at.isoformat()
+                            ),
+                            "outcome": reviews.current_human_acknowledgement.outcome,
+                            "report_type": "human_acknowledgement",
+                        }
+                    ),
+                    "human_acknowledgement_history": [
+                        {
+                            "acknowledged_at": (
+                                acknowledgement.acknowledged_at.isoformat()
+                            ),
+                            "outcome": acknowledgement.outcome,
+                            "report_type": "human_acknowledgement",
+                            "supersedes_previous": acknowledgement.supersedes_previous,
+                        }
+                        for acknowledgement in reviews.human_acknowledgement_history
+                    ],
+                },
                 "status": "released",
             },
             status_code=status_code,
@@ -508,14 +547,22 @@ def create_app(
                 },
                 status_code=202,
             )
+        reviews = await evidence_queues.review_history(
+            operator_id=principal.operator_id, evaluation_id=evaluation.evaluation_id
+        )
         return released_evidence_response(
             evaluation_id=evaluation.evaluation_id,
             contract=queue.contract,
+            reviews=reviews,
             status_code=201,
         )
 
     async def api_released_evidence(
-        request: Request, evaluation_id: str, required_scope: str
+        request: Request,
+        evaluation_id: str,
+        required_scope: str,
+        *,
+        record_retrieval: bool = False,
     ) -> Response:
         principal = await agent_for_scope(request, required_scope)
         if isinstance(principal, JSONResponse):
@@ -533,9 +580,25 @@ def create_app(
             return problem(
                 status_code=404, code="resource_not_found", title="Resource not found."
             )
+        if record_retrieval:
+            recorded = await evidence_queues.record_source_evidence_retrieval(
+                operator_id=principal.operator_id,
+                agent_key_id=principal.agent_key_id,
+                evaluation_id=parsed_evaluation_id,
+            )
+            if recorded is None:
+                return problem(
+                    status_code=404,
+                    code="resource_not_found",
+                    title="Resource not found.",
+                )
+        reviews = await evidence_queues.review_history(
+            operator_id=principal.operator_id, evaluation_id=parsed_evaluation_id
+        )
         return released_evidence_response(
             evaluation_id=parsed_evaluation_id,
             contract=contract,
+            reviews=reviews,
         )
 
     @app.get("/api/v1/queues/{evaluation_id}")
@@ -544,7 +607,58 @@ def create_app(
 
     @app.get("/api/v1/queues/{evaluation_id}/evidence")
     async def api_get_source_evidence(request: Request, evaluation_id: str) -> Response:
-        return await api_released_evidence(request, evaluation_id, "evidence:read")
+        return await api_released_evidence(
+            request, evaluation_id, "evidence:read", record_retrieval=True
+        )
+
+    @app.post("/api/v1/queues/{evaluation_id}/reviews", status_code=201)
+    async def api_report_agent_review(request: Request, evaluation_id: str) -> Response:
+        principal = await agent_for_scope(request, "reviews:report-agent")
+        if isinstance(principal, JSONResponse):
+            return principal
+        if (
+            request.headers.get("content-type", "").split(";", maxsplit=1)[0]
+            != "application/json"
+        ):
+            return problem(
+                status_code=400,
+                code="validation_failed",
+                title="A JSON agent review report is required.",
+            )
+        try:
+            payload = json.loads(await request.body())
+            if (
+                not isinstance(payload, dict)
+                or set(payload) != {"outcome"}
+                or not isinstance(payload["outcome"], str)
+            ):
+                raise ValueError
+            outcome = ReviewOutcome(payload["outcome"])
+            parsed_evaluation_id = UUID(evaluation_id)
+        except (ValueError, TypeError, json.JSONDecodeError):
+            return problem(
+                status_code=400,
+                code="validation_failed",
+                title="Submit one supported agent review outcome.",
+            )
+        report = await evidence_queues.record_agent_review(
+            operator_id=principal.operator_id,
+            agent_key_id=principal.agent_key_id,
+            evaluation_id=parsed_evaluation_id,
+            outcome=outcome,
+        )
+        if report is None:
+            return problem(
+                status_code=404, code="resource_not_found", title="Resource not found."
+            )
+        return JSONResponse(
+            {
+                "outcome": report.outcome,
+                "report_type": "agent_review",
+                "status": "recorded",
+            },
+            status_code=201,
+        )
 
     def new_queue_form(
         request: Request, *, error: str | None = None, status_code: int = 200
@@ -624,11 +738,64 @@ def create_app(
             return templates.TemplateResponse(request, "queue_pending.html")
         if queue.contract is None:
             return HTMLResponse("Not found", status_code=404)
-        return templates.TemplateResponse(
+        reviews = await evidence_queues.review_history(
+            operator_id=operator.operator_id, evaluation_id=parsed_evaluation_id
+        )
+        return response_with_csrf(
             request,
             "queue.html",
-            {"evidence": serialize_evidence_contract(queue.contract)},
+            {
+                "evidence": serialize_evidence_contract(queue.contract),
+                "evaluation_id": parsed_evaluation_id,
+                "reviews": reviews,
+            },
+            reuse_current_token=True,
         )
+
+    @app.get("/queues/{evaluation_id}/evidence/{evidence_row_id}")
+    async def open_source_evidence(
+        request: Request, evaluation_id: str, evidence_row_id: str
+    ) -> Response:
+        operator = await authenticated_operator(request)
+        if operator is None or operator.operator_type is None:
+            return HTMLResponse("Not found", status_code=404)
+        try:
+            parsed_evaluation_id = UUID(evaluation_id)
+            parsed_evidence_row_id = UUID(evidence_row_id)
+        except ValueError:
+            return HTMLResponse("Not found", status_code=404)
+        retrieval = await evidence_queues.record_source_evidence_retrieval(
+            operator_id=operator.operator_id,
+            evaluation_id=parsed_evaluation_id,
+            evidence_row_id=parsed_evidence_row_id,
+        )
+        if retrieval is None or retrieval.official_url is None:
+            return HTMLResponse("Not found", status_code=404)
+        return RedirectResponse(retrieval.official_url, status_code=303)
+
+    @app.post("/queues/{evaluation_id}/acknowledgements")
+    async def record_human_acknowledgement(
+        request: Request, evaluation_id: str
+    ) -> Response:
+        fields = await _form_fields(request)
+        if not csrf_is_valid(request, fields):
+            return HTMLResponse("Invalid request token", status_code=403)
+        operator = await authenticated_operator(request)
+        if operator is None or operator.operator_type is None:
+            return HTMLResponse("Not found", status_code=404)
+        try:
+            parsed_evaluation_id = UUID(evaluation_id)
+            outcome = ReviewOutcome(fields.get("outcome", ""))
+        except ValueError:
+            return HTMLResponse("Invalid review acknowledgement", status_code=400)
+        acknowledgement = await evidence_queues.record_human_acknowledgement(
+            operator_id=operator.operator_id,
+            evaluation_id=parsed_evaluation_id,
+            outcome=outcome,
+        )
+        if acknowledgement is None:
+            return HTMLResponse("Not found", status_code=404)
+        return RedirectResponse(f"/queues/{parsed_evaluation_id}", status_code=303)
 
     @app.get("/founder")
     async def founder_controls(request: Request) -> Response:

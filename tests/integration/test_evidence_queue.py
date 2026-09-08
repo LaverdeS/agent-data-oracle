@@ -2,6 +2,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import re
 import struct
 import subprocess
 import sys
@@ -181,6 +182,13 @@ async def test_operator_can_create_reopen_and_isolate_a_no_candidate_queue(
 
         await sign_in_and_declare(another_operator, email_provider, "other@example.com")
         forbidden_queue = await another_operator.get(submitted.headers["location"])
+        forbidden_acknowledgement = await another_operator.post(
+            f"{submitted.headers['location']}/acknowledgements",
+            data={
+                "outcome": "not_sure",
+                "csrf_token": another_operator.cookies["ado_csrf"],
+            },
+        )
 
     assert submitted.status_code == 303
     assert "No candidate recall-to-listing action records" in queue.text
@@ -191,6 +199,7 @@ async def test_operator_can_create_reopen_and_isolate_a_no_candidate_queue(
     assert "CPSC/U.S. consumer-product recall data only" in queue.text
     assert queue.text == reopened.text
     assert forbidden_queue.status_code == 404
+    assert forbidden_acknowledgement.status_code == 404
     with pytest.raises(DBAPIError):
         async with evidence_database.begin() as connection:
             await connection.execute(
@@ -406,6 +415,14 @@ async def test_candidate_queue_is_held_until_a_totp_verified_founder_approves_it
                 },
             ),
         )
+        rejection_form = await operator.get("/queues/new")
+        rejected_acknowledgement = await operator.post(
+            f"/queues/{second_evaluation_id}/acknowledgements",
+            data={
+                "outcome": "not_sure",
+                "csrf_token": rejection_form.cookies["ado_csrf"],
+            },
+        )
         blocked_form = await operator.get("/queues/new")
         blocked_submission = await operator.post(
             "/queues",
@@ -436,6 +453,7 @@ async def test_candidate_queue_is_held_until_a_totp_verified_founder_approves_it
     assert non_founder_pause_attempt.status_code == 404
     assert rejected.status_code == 303
     assert duplicate_rejection.status_code == 404
+    assert rejected_acknowledgement.status_code == 404
     assert blocked_submission.status_code == 503
     assert "New evidence queues are paused." in blocked_submission.text
     assert "Possible recall-to-listing action records" in historical.text
@@ -724,3 +742,183 @@ async def test_evaluation_failure_leaves_no_released_partial_queue(
         )
     assert response.status_code == 503
     assert evaluation_count == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_operator_can_append_a_human_acknowledgement_to_a_released_queue(
+    postgres_url: str, evidence_database: AsyncEngine
+) -> None:
+    del evidence_database
+    import_completed_fixture(postgres_url)
+    email_provider = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email_provider,
+        clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
+        secure_cookies=True,
+    )
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as operator,
+    ):
+        await sign_in_and_declare(operator, email_provider, "operator@example.com")
+        form = await operator.get("/queues/new")
+        created = await operator.post(
+            "/queues",
+            content=urlencode(
+                [
+                    ("identifier_type", "upc"),
+                    ("identifier_value", "000123456789"),
+                    ("authorization", "authorized"),
+                    ("idempotency_key", form.headers["x-idempotency-key"]),
+                    ("csrf_token", form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+        await operator.get(created.headers["location"])
+        acknowledgements = []
+        for outcome in (
+            "reviewed_same_product",
+            "reviewed_different_product",
+            "need_more_identifiers",
+            "not_sure",
+        ):
+            acknowledgements.append(
+                await operator.post(
+                    f"{created.headers['location']}/acknowledgements",
+                    data={
+                        "outcome": outcome,
+                        "csrf_token": operator.cookies["ado_csrf"],
+                    },
+                )
+            )
+        acknowledged_queue = await operator.get(created.headers["location"])
+        keys_page = await operator.get("/agent-keys")
+        created_key = await operator.post(
+            "/agent-keys",
+            data={
+                "scopes": ["queues:read"],
+                "csrf_token": keys_page.cookies["ado_csrf"],
+            },
+        )
+        secret = re.search(
+            r'<code id="agent-key-secret">([^<]+)</code>', created_key.text
+        )
+        assert secret is not None
+        api_queue = await operator.get(
+            f"/api/v1/queues/{created.headers['location'].rsplit('/', maxsplit=1)[-1]}",
+            headers={"Authorization": f"Bearer {secret.group(1)}"},
+        )
+
+    assert [acknowledgement.status_code for acknowledgement in acknowledgements] == [
+        303,
+        303,
+        303,
+        303,
+    ]
+    assert "Current human acknowledgement: not sure" in acknowledged_queue.text
+    assert acknowledged_queue.text.count("supersedes the prior acknowledgement") == 3
+    assert (
+        "operator's report, not a safety, legal, recall-status, or removal finding"
+        in acknowledged_queue.text
+    )
+    assert api_queue.json()["reviews"]["current_human_acknowledgement"] == {
+        "acknowledged_at": "2026-09-04T10:00:00+00:00",
+        "outcome": "not_sure",
+        "report_type": "human_acknowledgement",
+    }
+    assert len(api_queue.json()["reviews"]["human_acknowledgement_history"]) == 4
+    assert api_queue.json()["reviews"]["agent_review_reports"] == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_official_evidence_handoff_records_no_submitted_identifier(
+    postgres_url: str, evidence_database: AsyncEngine
+) -> None:
+    import_completed_fixture(postgres_url)
+    async with evidence_database.begin() as connection:
+        await connection.execute(
+            text(
+                "UPDATE audit_gate_state SET committed_queue_count = 20 "
+                "WHERE singleton = true"
+            )
+        )
+    email_provider = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email_provider,
+        clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
+        secure_cookies=True,
+    )
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as operator,
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as another_operator,
+    ):
+        await sign_in_and_declare(operator, email_provider, "operator@example.com")
+        form = await operator.get("/queues/new")
+        created = await operator.post(
+            "/queues",
+            content=urlencode(
+                [
+                    ("identifier_type", "model"),
+                    ("identifier_value", "HANS0002"),
+                    ("authorization", "authorized"),
+                    ("idempotency_key", form.headers["x-idempotency-key"]),
+                    ("csrf_token", form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+        queue = await operator.get(created.headers["location"])
+        handoff_path = re.search(r'href="(/queues/[^/]+/evidence/[^/]+)"', queue.text)
+        assert handoff_path is not None
+        handoff = await operator.get(handoff_path.group(1))
+        await sign_in_and_declare(another_operator, email_provider, "other@example.com")
+        forbidden_handoff = await another_operator.get(handoff_path.group(1))
+
+    async with evidence_database.connect() as connection:
+        retrieval = (
+            await connection.execute(
+                text(
+                    "SELECT agent_key_id, evidence_row_id FROM "
+                    "source_evidence_retrievals"
+                )
+            )
+        ).one()
+        columns = await connection.scalars(
+            text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'source_evidence_retrievals'"
+            )
+        )
+
+    assert handoff.status_code == 303
+    assert handoff.headers["location"].endswith("Entrapment-and-Fall-Hazards")
+    assert forbidden_handoff.status_code == 404
+    assert retrieval[0] is None
+    assert str(retrieval[1]) == re.search(
+        r"evidence/([^/]+)", handoff_path.group(1)
+    ).group(1)
+    assert not any("identifier" in column for column in columns)

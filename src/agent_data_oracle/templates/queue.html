@@ -9,7 +9,7 @@
   {% for candidate in evidence.candidates %}
   <section class="card">
     <h2>{{ candidate.candidate_class.replace('_', ' ') }}</h2>
-    <p><strong>Recall {{ candidate.recall_number }}</strong> · <a href="{{ candidate.official_url }}">Official CPSC notice</a></p>
+    <p><strong>Recall {{ candidate.recall_number }}</strong> · <a href="/queues/{{ evaluation_id }}/evidence/{{ candidate.evidence_row_id }}">Official CPSC notice</a></p>
     <p><strong>Submitted identifier:</strong> {{ candidate.submitted_identifier.type }}: {{ candidate.submitted_identifier.literal }}</p>
     <h3>Match basis</h3>
     <ul>{% for basis in candidate.match_bases %}<li>{{ basis.field }}: {{ basis.literal }}{% if basis.identity_limit %} — {{ basis.identity_limit }}{% endif %}</li>{% endfor %}</ul>
@@ -39,6 +39,41 @@
     <dt>Normalization version</dt><dd>{{ evidence.normalization_version }}</dd>
     <dt>Matcher version</dt><dd>{{ evidence.matcher_version }}</dd>
   </dl>
+  {% if not audit %}
+  <section class="card">
+    <h2>Human review acknowledgement</h2>
+    {% if reviews.current_human_acknowledgement %}
+    <p>Current human acknowledgement: {{ reviews.current_human_acknowledgement.outcome.replace('_', ' ') }}</p>
+    {% else %}
+    <p>No human acknowledgement has been recorded.</p>
+    {% endif %}
+    <p>This acknowledgement is the operator's report, not a safety, legal, recall-status, or removal finding.</p>
+    <form method="post" action="/queues/{{ evaluation_id }}/acknowledgements">
+      <label for="outcome">Your review outcome</label>
+      <select id="outcome" name="outcome">
+        <option value="reviewed_same_product">Reviewed — same product</option>
+        <option value="reviewed_different_product">Reviewed — different product</option>
+        <option value="need_more_identifiers">Need more identifiers</option>
+        <option value="not_sure">Not sure</option>
+      </select>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Record acknowledgement</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Review record history</h2>
+    {% if reviews.human_acknowledgement_history %}
+    <h3>Human acknowledgements</h3>
+    <ul>{% for acknowledgement in reviews.human_acknowledgement_history %}<li>{{ acknowledgement.outcome.replace('_', ' ') }} at {{ acknowledgement.acknowledged_at.isoformat() }}{% if acknowledgement.supersedes_previous %} (supersedes the prior acknowledgement){% endif %}</li>{% endfor %}</ul>
+    {% endif %}
+    <h3>Agent review reports</h3>
+    {% if reviews.agent_review_reports %}
+    <ul>{% for report in reviews.agent_review_reports %}<li>{{ report.outcome.replace('_', ' ') }} at {{ report.reported_at.isoformat() }} — reported by an external agent, not a human acknowledgement.</li>{% endfor %}</ul>
+    {% else %}
+    <p>No external-agent review reports have been recorded.</p>
+    {% endif %}
+  </section>
+  {% endif %}
   {% if audit %}
   <section class="card warning">
     <h2>Founder decision</h2>
