@@ -1,3 +1,4 @@
+import json
 import logging
 import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
@@ -14,6 +15,15 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
+from agent_data_oracle.agent_access import (
+    ALLOWED_AGENT_SCOPES,
+    AgentAccess,
+    AgentAuthenticationError,
+    AgentKeyLimitError,
+    AgentPrincipal,
+    AgentRateLimitError,
+    AgentScopeError,
+)
 from agent_data_oracle.auth import (
     AuthenticatedOperator,
     EmailProvider,
@@ -33,6 +43,7 @@ from agent_data_oracle.config import (
 from agent_data_oracle.database import Database
 from agent_data_oracle.evidence_queue import (
     AuditDecision,
+    EvidenceQueueContract,
     EvidenceQueues,
     GloballyPausedError,
     IdempotencyConflictError,
@@ -40,11 +51,13 @@ from agent_data_oracle.evidence_queue import (
     SubmissionError,
     serialize_evidence_contract,
     submitted_identifiers_from_form,
+    submitted_identifiers_from_json,
 )
 from agent_data_oracle.observability import request_log_fields
 
 request_logger = logging.getLogger("agent_data_oracle.http")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+api_guide_path = Path(__file__).parents[2] / "docs" / "api-v1.md"
 
 
 def _route_template(request: Request) -> str:
@@ -94,6 +107,7 @@ def create_app(
         founder_emails=founder_emails or founder_emails_from_environment(),
     )
     evidence_queues = EvidenceQueues(database, clock=clock)
+    agent_access = AgentAccess(database, clock=clock)
     use_secure_cookies = (
         secure_cookies
         if secure_cookies is not None
@@ -110,7 +124,14 @@ def create_app(
         yield
         await database.close()
 
-    app = FastAPI(title="Agent Data Oracle", lifespan=lifespan)
+    app = FastAPI(
+        title="Agent Data Oracle API",
+        version="v1",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url="/api/v1/openapi.json",
+        lifespan=lifespan,
+    )
     if public_origin is not None or secure_cookies_from_environment():
         trusted_hostname = urlsplit(sign_in_origin).hostname
         if trusted_hostname is None:
@@ -122,6 +143,7 @@ def create_app(
     app.state.database = database
     app.state.human_access = human_access
     app.state.evidence_queues = evidence_queues
+    app.state.agent_access = agent_access
 
     def response_with_csrf(
         request: Request,
@@ -158,6 +180,74 @@ def create_app(
         return human_access.csrf_token_is_valid(
             request.cookies.get("ado_csrf"), fields.get("csrf_token")
         )
+
+    def problem(
+        *, status_code: int, code: str, title: str, retry_after: int | None = None
+    ) -> JSONResponse:
+        response = JSONResponse(
+            {
+                "code": code,
+                "status": status_code,
+                "title": title,
+                "type": f"https://agent-data-oracle.invalid/problems/{code}",
+            },
+            status_code=status_code,
+            media_type="application/problem+json",
+        )
+        if retry_after is not None:
+            response.headers["Retry-After"] = str(retry_after)
+        return response
+
+    def released_evidence_response(
+        *,
+        evaluation_id: UUID,
+        contract: EvidenceQueueContract,
+        status_code: int = 200,
+    ) -> JSONResponse:
+        return JSONResponse(
+            {
+                "contract_version": "v1",
+                "evaluation_id": str(evaluation_id),
+                "evidence": serialize_evidence_contract(contract),
+                "status": "released",
+            },
+            status_code=status_code,
+        )
+
+    async def agent_for_scope(
+        request: Request, required_scope: str
+    ) -> AgentPrincipal | JSONResponse:
+        authorization = request.headers.get("authorization", "")
+        scheme, _, bearer_secret = authorization.partition(" ")
+        if scheme.casefold() != "bearer" or not bearer_secret:
+            return problem(
+                status_code=401,
+                code="authentication_required",
+                title="A bearer agent key is required.",
+            )
+        try:
+            return await agent_access.authenticate(
+                bearer_secret=bearer_secret, required_scope=required_scope
+            )
+        except AgentAuthenticationError:
+            return problem(
+                status_code=401,
+                code="authentication_required",
+                title="The bearer agent key is invalid or revoked.",
+            )
+        except AgentScopeError:
+            return problem(
+                status_code=403,
+                code="insufficient_scope",
+                title="This agent key does not have the required scope.",
+            )
+        except AgentRateLimitError:
+            return problem(
+                status_code=429,
+                code="rate_limited",
+                title="This agent key is temporarily rate limited.",
+                retry_after=60,
+            )
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request) -> Response:
@@ -269,6 +359,192 @@ def create_app(
             "app.html",
             {"evaluations": evaluations, "operator": operator},
         )
+
+    async def agent_keys_page(
+        request: Request,
+        *,
+        created_secret: str | None = None,
+        error: str | None = None,
+        status_code: int = 200,
+    ) -> Response:
+        operator = await authenticated_operator(request)
+        if operator is None or operator.operator_type is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        return response_with_csrf(
+            request,
+            "agent_keys.html",
+            {
+                "allowed_scopes": tuple(sorted(ALLOWED_AGENT_SCOPES)),
+                "created_secret": created_secret,
+                "error": error,
+                "keys": await agent_access.list_keys(operator_id=operator.operator_id),
+            },
+            status_code=status_code,
+        )
+
+    @app.get("/agent-keys", response_class=HTMLResponse)
+    async def agent_keys(request: Request) -> Response:
+        operator = await authenticated_operator(request)
+        if operator is None or operator.operator_type is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if not human_access.reauthentication_is_current(operator):
+            return RedirectResponse("/sign-in", status_code=303)
+        return await agent_keys_page(request)
+
+    @app.post("/agent-keys", response_class=HTMLResponse)
+    async def create_agent_key(request: Request) -> Response:
+        values, body_is_within_limit = await _form_values(request)
+        fields = {key: entries[0] for key, entries in values.items() if entries}
+        operator = await authenticated_operator(request)
+        if not csrf_is_valid(request, fields):
+            return HTMLResponse("Invalid request token", status_code=403)
+        if operator is None or operator.operator_type is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if not body_is_within_limit or not human_access.reauthentication_is_current(
+            operator
+        ):
+            return RedirectResponse("/sign-in", status_code=303)
+        try:
+            created = await agent_access.create_key(
+                operator_id=operator.operator_id,
+                scopes=frozenset(values.get("scopes", [])),
+            )
+        except (AgentKeyLimitError, ValueError) as error:
+            return await agent_keys_page(request, error=str(error), status_code=400)
+        return await agent_keys_page(request, created_secret=created.secret)
+
+    @app.post("/agent-keys/{agent_key_id}/revoke", response_class=HTMLResponse)
+    async def revoke_agent_key(request: Request, agent_key_id: str) -> Response:
+        fields = await _form_fields(request)
+        operator = await authenticated_operator(request)
+        if not csrf_is_valid(request, fields):
+            return HTMLResponse("Invalid request token", status_code=403)
+        if operator is None or operator.operator_type is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        if not human_access.reauthentication_is_current(operator):
+            return RedirectResponse("/sign-in", status_code=303)
+        try:
+            key_id = UUID(agent_key_id)
+        except ValueError:
+            return HTMLResponse("Not found", status_code=404)
+        if not await agent_access.revoke_key(
+            operator_id=operator.operator_id, agent_key_id=key_id
+        ):
+            return HTMLResponse("Not found", status_code=404)
+        return RedirectResponse("/agent-keys", status_code=303)
+
+    @app.get("/docs/api-v1.md", include_in_schema=False)
+    async def agent_api_guide() -> Response:
+        guide = api_guide_path.read_text(encoding="utf-8")
+        return Response(guide, media_type="text/markdown")
+
+    @app.post("/api/v1/queues", status_code=201)
+    async def api_submit_evidence_queue(request: Request) -> Response:
+        principal = await agent_for_scope(request, "queues:submit")
+        if isinstance(principal, JSONResponse):
+            return principal
+        if (
+            request.headers.get("content-type", "").split(";", 1)[0]
+            != "application/json"
+        ):
+            return problem(
+                status_code=400,
+                code="validation_failed",
+                title="A JSON evidence-queue request is required.",
+            )
+        body = await request.body()
+        if len(body) > 8_192:
+            return problem(
+                status_code=400,
+                code="validation_failed",
+                title="The evidence-queue request is too large.",
+            )
+        try:
+            identifiers = submitted_identifiers_from_json(json.loads(body))
+            evaluation = await evidence_queues.submit_evaluation(
+                operator_id=principal.operator_id,
+                idempotency_key=request.headers.get("idempotency-key", ""),
+                identifiers=identifiers,
+            )
+        except (json.JSONDecodeError, SubmissionError):
+            return problem(
+                status_code=400,
+                code="validation_failed",
+                title="Submit one to 50 explicit typed identifier rows.",
+            )
+        except IdempotencyConflictError:
+            return problem(
+                status_code=409,
+                code="idempotency_conflict",
+                title="This idempotency key was used for different input.",
+            )
+        except GloballyPausedError:
+            return problem(
+                status_code=503,
+                code="global_pause",
+                title="New evidence queues are paused.",
+            )
+        except SourceUnavailableError:
+            return problem(
+                status_code=503,
+                code="source_unavailable",
+                title="A completed CPSC source revision is unavailable.",
+            )
+        except SQLAlchemyError:
+            return problem(
+                status_code=503,
+                code="infrastructure_failure",
+                title="Evidence evaluation is temporarily unavailable.",
+            )
+        queue = await evidence_queues.operator_queue(
+            operator_id=principal.operator_id, evaluation_id=evaluation.evaluation_id
+        )
+        if queue is None or queue.contract is None:
+            return JSONResponse(
+                {
+                    "contract_version": "v1",
+                    "evaluation_id": str(evaluation.evaluation_id),
+                    "status": "pending_founder_audit",
+                },
+                status_code=202,
+            )
+        return released_evidence_response(
+            evaluation_id=evaluation.evaluation_id,
+            contract=queue.contract,
+            status_code=201,
+        )
+
+    async def api_released_evidence(
+        request: Request, evaluation_id: str, required_scope: str
+    ) -> Response:
+        principal = await agent_for_scope(request, required_scope)
+        if isinstance(principal, JSONResponse):
+            return principal
+        try:
+            parsed_evaluation_id = UUID(evaluation_id)
+        except ValueError:
+            return problem(
+                status_code=404, code="resource_not_found", title="Resource not found."
+            )
+        contract = await evidence_queues.released_contract(
+            operator_id=principal.operator_id, evaluation_id=parsed_evaluation_id
+        )
+        if contract is None:
+            return problem(
+                status_code=404, code="resource_not_found", title="Resource not found."
+            )
+        return released_evidence_response(
+            evaluation_id=parsed_evaluation_id,
+            contract=contract,
+        )
+
+    @app.get("/api/v1/queues/{evaluation_id}")
+    async def api_get_evidence_queue(request: Request, evaluation_id: str) -> Response:
+        return await api_released_evidence(request, evaluation_id, "queues:read")
+
+    @app.get("/api/v1/queues/{evaluation_id}/evidence")
+    async def api_get_source_evidence(request: Request, evaluation_id: str) -> Response:
+        return await api_released_evidence(request, evaluation_id, "evidence:read")
 
     def new_queue_form(
         request: Request, *, error: str | None = None, status_code: int = 200

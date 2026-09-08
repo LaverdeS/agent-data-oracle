@@ -323,13 +323,29 @@ def submitted_identifiers_from_form(
         raise SubmissionError("Submit only explicit UPC, model, or brand rows.")
     if form["authorization"] != ["authorized"]:
         raise SubmissionError("Confirm that you are authorized to submit these values.")
-    types = form.get("identifier_type", [])
-    values = form.get("identifier_value", [])
-    if len(types) != len(values) or len(types) > MAX_IDENTIFIER_ROWS:
-        raise SubmissionError("Submit between one and 50 typed identifier rows.")
+    return submitted_identifiers_from_rows(
+        tuple(
+            zip(
+                form.get("identifier_type", []),
+                form.get("identifier_value", []),
+                strict=False,
+            )
+        ),
+        row_count_matches=(
+            len(form.get("identifier_type", []))
+            == len(form.get("identifier_value", []))
+        ),
+    )
 
+
+def submitted_identifiers_from_rows(
+    rows: tuple[tuple[str, str], ...], *, row_count_matches: bool = True
+) -> tuple[SubmittedIdentifier, ...]:
+    """Validate typed identifier rows independently of their transport envelope."""
+    if not row_count_matches or len(rows) > MAX_IDENTIFIER_ROWS:
+        raise SubmissionError("Submit between one and 50 typed identifier rows.")
     identifiers: list[SubmittedIdentifier] = []
-    for identifier_type, submitted_literal in zip(types, values, strict=True):
+    for identifier_type, submitted_literal in rows:
         if not submitted_literal:
             continue
         if (
@@ -369,6 +385,28 @@ def submitted_identifiers_from_form(
     if not identifiers:
         raise SubmissionError("Submit between one and 50 typed identifier rows.")
     return tuple(identifiers)
+
+
+def submitted_identifiers_from_json(
+    payload: object,
+) -> tuple[SubmittedIdentifier, ...]:
+    """Validate the JSON adapter without widening the typed-input boundary."""
+    if not isinstance(payload, dict) or set(payload) != {"identifiers"}:
+        raise SubmissionError("Submit only explicit UPC, model, or brand rows.")
+    rows = payload.get("identifiers")
+    if not isinstance(rows, list):
+        raise SubmissionError("Submit between one and 50 typed identifier rows.")
+    identifier_rows: list[tuple[str, str]] = []
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"type", "literal"}
+            or not isinstance(row["type"], str)
+            or not isinstance(row["literal"], str)
+        ):
+            raise SubmissionError("Submit only explicit UPC, model, or brand rows.")
+        identifier_rows.append((row["type"], row["literal"]))
+    return submitted_identifiers_from_rows(tuple(identifier_rows))
 
 
 def _submission_hash(identifiers: tuple[SubmittedIdentifier, ...]) -> str:

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Delegated agent keys</h1>
+<p>Keys let an external agent use only the scopes you select. They cannot use your browser session, review evidence as a person, or operate founder controls.</p>
+{% if error %}<p role="alert">{{ error }}</p>{% endif %}
+{% if created_secret %}
+<section aria-label="New agent key">
+  <h2>Copy this key now</h2>
+  <p>This is the only time its full secret is shown.</p>
+  <code id="agent-key-secret">{{ created_secret }}</code>
+</section>
+{% endif %}
+<form method="post" action="/agent-keys">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <fieldset>
+    <legend>Allowed actions</legend>
+    {% for scope in allowed_scopes %}
+    <label><input type="checkbox" name="scopes" value="{{ scope }}"> {{ scope }}</label>
+    {% endfor %}
+  </fieldset>
+  <button type="submit">Create agent key</button>
+</form>
+<h2>Active keys</h2>
+<ul>
+{% for key in keys %}
+  <li><code>{{ key.secret_prefix }}</code> — {{ key.scopes | join(', ') }}
+    {% if key.last_used_at %}; last used {{ key.last_used_at.isoformat() }}{% endif %}
+    <form method="post" action="/agent-keys/{{ key.agent_key_id }}/revoke">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Revoke</button>
+    </form>
+  </li>
+{% else %}
+  <li>No active agent keys.</li>
+{% endfor %}
+</ul>
+<p><a href="/docs/api-v1.md">Machine-use guide</a></p>
+{% endblock %}

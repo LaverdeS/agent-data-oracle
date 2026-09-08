@@ -15,6 +15,7 @@
     <p class="quiet">This declaration does not verify your legal business status.</p>
   </div>
   <p><a class="button" href="/queues/new">Create an evidence queue</a></p>
+  <p><a class="button" href="/agent-keys">Delegated agent keys</a></p>
   {% if evaluations %}
     <h2>Released evidence queues</h2>
     <ul>{% for evaluation in evaluations %}<li><a href="/queues/{{ evaluation.evaluation_id }}">No-candidate queue from {{ evaluation.evaluated_at.isoformat() }}</a></li>{% endfor %}</ul>
