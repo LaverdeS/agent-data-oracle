@@ -149,6 +149,7 @@ activemq-data/
 
 # Environments
 .env
+.provisioning.env
 .envrc
 .venv
 .uv-cache/

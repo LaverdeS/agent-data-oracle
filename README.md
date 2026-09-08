@@ -118,6 +118,22 @@ contains revision metadata and counts, not source payloads.
 For a reproducible local evidence-queue walkthrough after importing the
 fixture, see [View a local evidence queue](docs/local-evidence-queue-demo.md).
 
+## Production provisioning
+
+The founder-led Frankfurt deployment is intentionally confirmation-gated and
+does not activate the usage-learning phase. Review
+[the provisioning checklist](docs/provision-gcp.md), then run the interactive
+wizard from Git Bash or another Bash-compatible terminal:
+
+```console
+scripts/provision-gcp.sh
+```
+
+The wizard stores only non-secret progress values in ignored
+`.provisioning.env`; enter production secrets directly into Secret Manager. It
+includes an explicit Cloud SQL “park or go live” step: a parked database keeps
+its data but makes the deployed application unavailable to users.
+
 ## Quality gates
 
 With the Compose database running:
