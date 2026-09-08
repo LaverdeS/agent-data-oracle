@@ -37,11 +37,19 @@ OIDC federation. It deliberately creates no Cloud Run revision yet.
 
 ```console
 gcloud config set project YOUR_PRODUCTION_PROJECT_ID
+gcloud auth application-default set-quota-project YOUR_PRODUCTION_PROJECT_ID
 terraform -chdir=infra/terraform init
 terraform -chdir=infra/terraform apply \
   -var project_id=YOUR_PRODUCTION_PROJECT_ID \
   -var github_repository=LaverdeS/agent-data-oracle
 ```
+
+The Google Terraform provider uses Application Default Credentials (ADC). If
+the quota-project command reports that ADC does not exist yet, run
+`gcloud auth application-default login` with the same founder account, then
+repeat the quota-project command. A warning that the active project and ADC
+quota project differ is not a failed project switch; it is resolved by this
+step before Terraform runs.
 
 Record the `cloud_sql_connection_name`, `workload_identity_provider`, and
 `deployer_service_account` outputs. Create a least-privilege PostgreSQL login

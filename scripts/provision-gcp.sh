@@ -208,6 +208,7 @@ step "There is no region choice on this screen. Terraform creates all applicatio
 ask GCP_PROJECT_ID "Paste the production Google Cloud project ID:"
 write_env GCP_PROJECT_ID "$GCP_PROJECT_ID"
 say "gcloud config set project $GCP_PROJECT_ID"
+step "For Terraform credentials, run gcloud auth application-default set-quota-project $GCP_PROJECT_ID. If it says ADC is missing, run gcloud auth application-default login first using the same account."
 step "The separate backup project belongs to ticket #33 and is deliberately not provisioned here."
 pause "Press Enter after billing is linked to the production project."
 
