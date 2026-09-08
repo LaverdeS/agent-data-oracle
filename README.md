@@ -1,10 +1,51 @@
 # Agent Data Oracle
 
-Machine-first data infrastructure for verified, time-stamped,
-decision-ready information consumed by people, AI agents, and applications.
-The first bounded product is a CPSC evidence-queue usage-learning phase. It
-produces conditional evidence for human review, never a safety, legal, or
-compliance verdict.
+Reliable evidence for decisions made by people and AI agents.
+
+Agent Data Oracle turns scattered, changing source material into structured,
+time-stamped decision records: answers with their supporting evidence,
+freshness, identity constraints, and uncertainty intact. It is for workflows
+where finding a webpage is easy, but acting on an incomplete or stale answer
+is costly.
+
+```mermaid
+flowchart LR
+    sources[Official sources<br/>CPSC notices] --> record[Decision record<br/>evidence + freshness]
+    merchant[Merchant input<br/>UPCs + model numbers] --> record
+    record --> queue[Evidence queue<br/>candidates + uncertainty]
+    queue --> review[Human or AI-agent review]
+    review --> action[Explicit action]
+```
+
+Source, time, match, and uncertainty stay together; the record is a review
+aid, not a safety, legal, or compliance verdict.
+
+The project begins with a deliberately narrow use case: helping U.S.-selling
+merchants compare product identifiers with official CPSC recall notices. It
+returns an evidence queue of possible matches, the fields that support them,
+unresolved constraints, retrieval time, and the original notice - so a person
+or agent can inspect the basis for a decision.
+
+It does **not** decide that a product is safe, recalled, legal, compliant, or
+ready to remove. The merchant remains the decision-maker. The goal is not to
+add another way to search the web; it is to make high-consequence information
+more reliable and accountable at the moment of action.
+
+## What makes a decision record useful
+
+- **Inspectable:** evidence stays connected to the answer rather than being
+  hidden behind a summary.
+- **Time-aware:** records preserve when information was retrieved and can be
+  reviewed as sources change.
+- **Honest about identity and uncertainty:** candidate matches and unresolved
+  constraints are explicit, not converted into false certainty.
+- **Built for workflows:** the same structured evidence can support a human
+  review queue, an application, or a bounded AI-agent task.
+
+The initial recall workflow is a test of that value proposition, not a claim
+that demand or a long-term advantage has already been proven. Durable value
+will have to be earned through record quality, refresh history, better entity
+resolution, and verified, permissioned outcomes.
 
 ## Prerequisites
 
