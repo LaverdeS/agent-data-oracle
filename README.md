@@ -126,7 +126,7 @@ does not activate the usage-learning phase. Review
 wizard from Git Bash or another Bash-compatible terminal:
 
 ```console
-scripts/provision-gcp.sh
+bash scripts/provision-gcp.sh
 ```
 
 The wizard stores only non-secret progress values in ignored
