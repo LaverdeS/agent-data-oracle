@@ -6,16 +6,25 @@ customer account, or authorize collection of validation data.
 
 ## 1. Founder-owned accounts and approvals
 
-1. In the [Google Cloud console](https://console.cloud.google.com/), create or
-   select a founder-owned organization and production project. Attach billing,
-   set its budget alerts and supported spend-cap behavior, and record the
-   responsible pause owner.
-2. Create a separate founder-owned backup project. Backup bucket and scheduled
+1. In the [Create a project page](https://console.cloud.google.com/projectcreate),
+   create a founder-owned production project. Use **Agent Data Oracle
+   Production** as its project name. Try `agent-data-oracle-prod` as its
+   globally unique project ID; if it is unavailable, use
+   `agent-data-oracle-prod-2026` or another short lowercase suffix. Record the
+   final project ID because it cannot be changed later. Select the
+   founder-controlled organization, or **No organization** for a personal
+   Google Cloud account, then click **Create**.
+2. Select the new project in the Google Cloud project selector. Go to
+   **Billing** and link the founder-owned billing account. Set budget alerts
+   and any supported spend-cap behavior, and record the responsible pause
+   owner. Creating the project or linking billing does not create the paid
+   database; the first Terraform apply does.
+3. Create a separate founder-owned backup project. Backup bucket and scheduled
    backup provisioning belong to ticket #33; do not grant the backup writer
    broader project access in this ticket.
-3. In GitHub, protect `main`, create the `production` environment, and require
+4. In GitHub, protect `main`, create the `production` environment, and require
    the founder's deployment approval. The delivery workflow is manual only.
-4. In Google Workspace, create a dedicated sender mailbox and keep its recovery
+5. In Google Workspace, create a dedicated sender mailbox and keep its recovery
    controls with the founder. Workspace email processing is the documented
    non-Frankfurt transfer exception.
 
@@ -27,6 +36,7 @@ regional Secret Manager containers, Cloud SQL, Artifact Registry, and GitHub
 OIDC federation. It deliberately creates no Cloud Run revision yet.
 
 ```console
+gcloud config set project YOUR_PRODUCTION_PROJECT_ID
 terraform -chdir=infra/terraform init
 terraform -chdir=infra/terraform apply \
   -var project_id=YOUR_PRODUCTION_PROJECT_ID \

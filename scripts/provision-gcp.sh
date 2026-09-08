@@ -189,8 +189,9 @@ TOTAL_STAGES=12
 
 banner "Agent Data Oracle production provisioning"
 
-stage "Founder authority and cost boundary"
+stage "Local prerequisites and cost boundary"
 say "This prepares the private production shell. It does not activate the usage-learning phase."
+step "Run terraform version and gcloud auth list. If no active Google account appears, run gcloud auth login."
 warn "Creating Cloud SQL begins a running-instance charge. Use local Docker PostgreSQL for ordinary development."
 step "Confirm that you own the Google Cloud billing account, GitHub repository, and Workspace sender controls."
 open_url "https://console.cloud.google.com/billing"
@@ -199,9 +200,14 @@ pause "Press Enter after you have confirmed the cost boundary."
 
 stage "Production project and billing"
 open_url "https://console.cloud.google.com/projectcreate"
-step "Create or select a founder-owned production project, then link its billing account."
+step "For Project name, use Agent Data Oracle Production."
+step "For Project ID, try agent-data-oracle-prod; if unavailable, use agent-data-oracle-prod-2026 or another short lowercase suffix. Copy the final ID: it cannot be changed later."
+step "Choose your founder-controlled organization, or No organization if this is a personal Google Cloud account, then click Create."
+step "After creation, select the new project in the top project selector. Go to Billing, choose Link a billing account, and attach your founder-owned billing account."
+step "There is no region choice on this screen. Terraform creates all application resources later in Frankfurt (europe-west3)."
 ask GCP_PROJECT_ID "Paste the production Google Cloud project ID:"
 write_env GCP_PROJECT_ID "$GCP_PROJECT_ID"
+say "gcloud config set project $GCP_PROJECT_ID"
 step "The separate backup project belongs to ticket #33 and is deliberately not provisioned here."
 pause "Press Enter after billing is linked to the production project."
 
