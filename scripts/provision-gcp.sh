@@ -185,7 +185,7 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 
 ENV_FILE="${PROVISIONING_ENV_FILE:-.provisioning.env}"
-TOTAL_STAGES=12
+TOTAL_STAGES=13
 
 banner "Agent Data Oracle production provisioning"
 
@@ -193,7 +193,7 @@ stage "Local prerequisites and cost boundary"
 say "This prepares the private production shell. It does not activate the usage-learning phase."
 step "Run terraform version and gcloud auth list. If no active Google account appears, run gcloud auth login."
 warn "Creating Cloud SQL begins a running-instance charge. Use local Docker PostgreSQL for ordinary development."
-step "Confirm that you own the Google Cloud billing account, GitHub repository, and Workspace sender controls."
+step "Confirm that you own the Google Cloud billing account and GitHub repository, and control the Gmail sender account and its recovery methods."
 open_url "https://console.cloud.google.com/billing"
 step "Create monthly budget alerts before creating resources. Ordinary alerts warn; they do not automatically stop charges."
 pause "Press Enter after you have confirmed the cost boundary."
@@ -222,12 +222,28 @@ step "Do not allow force pushes or branch deletion. Keep the admin bypass only f
 step "Do not add Google service-account keys or production secrets to GitHub."
 pause "Press Enter after the production environment is protected."
 
-stage "Dedicated Workspace sender"
-open_url "https://admin.google.com/"
-step "Create a dedicated sender mailbox whose recovery controls remain with the founder."
-step "Enable Gmail API, create a restricted OAuth client, and authorize only gmail.send for that sender."
-warn "The OAuth client secret and refresh token are production secrets. Do not paste them into this wizard."
-pause "Press Enter after the sender and founder-controlled consent flow are ready."
+stage "Consumer Gmail sender and OAuth client"
+say "No Workspace subscription or custom domain is required for this bounded phase."
+step "Prefer a new free Gmail account used only for Agent Data Oracle sign-in mail. Reusing your existing Gmail account is allowed, but it exposes that address and combines its security and availability with production access."
+ask GMAIL_SENDER_ACCOUNT "Paste the founder-controlled consumer Gmail sender address (never paste its password):"
+write_env GMAIL_SENDER_ACCOUNT "$GMAIL_SENDER_ACCOUNT"
+if confirm "Is this also the Google account that owns the production project"; then
+  warn "You are accepting a larger blast radius: compromise, suspension, or recovery trouble can affect both GCP control and sign-in delivery."
+  write_env GMAIL_SENDER_ACCOUNT_MODE "reused-founder-account-risk-accepted"
+else
+  write_env GMAIL_SENDER_ACCOUNT_MODE "separate-free-sender"
+fi
+open_url "https://myaccount.google.com/security"
+step "While signed in as the sender, enable two-step verification and verify its recovery email and phone. Store recovery material in the founder's password manager."
+open_url "https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=$GCP_PROJECT_ID"
+step "Enable the Gmail API in the production project."
+open_url "https://console.cloud.google.com/auth/overview?project=$GCP_PROJECT_ID"
+step "In Google Auth Platform, set Audience to External and provide current founder support and developer contact details."
+step "Under Data Access, add only https://www.googleapis.com/auth/gmail.send. It is a sensitive scope, not a restricted scope, and cannot read the mailbox."
+step "Under Audience, click Publish app so the status is In production before the final token is issued. For this sender-only personal-use app, do not add public operators as OAuth users; they only receive email."
+warn "The sender will see an unverified-app warning. Recheck Google's current personal-use exemption and quota terms before authorizing. A token issued while the app is in Testing expires after seven days."
+step "Under Clients, create a Web application OAuth client. Add https://developers.google.com/oauthplayground as an authorized redirect URI. Save its client ID and secret temporarily in the founder's password manager, never in this wizard or GitHub."
+pause "Press Enter after the sender account and OAuth web client are ready."
 
 stage "Create Frankfurt infrastructure"
 step "Install Terraform and gcloud, authenticate as the founder, and run from the repository root:"
@@ -247,10 +263,20 @@ write_env WORKLOAD_IDENTITY_PROVIDER "$WORKLOAD_IDENTITY_PROVIDER"
 write_env DEPLOYER_SERVICE_ACCOUNT "$DEPLOYER_SERVICE_ACCOUNT"
 write_env CLOUD_SQL_INSTANCE "$CLOUD_SQL_INSTANCE"
 
-stage "Database login and Secret Manager"
-open_url "https://console.cloud.google.com/security/secret-manager"
+stage "Authorize the consumer Gmail sender"
+open_url "https://developers.google.com/oauthplayground/"
+step "Open the Playground settings, enable Use your own OAuth credentials, choose Offline access and Force prompt: Consent, then enter the web-client ID and secret from your password manager."
+step "Enter only https://www.googleapis.com/auth/gmail.send, choose Authorize APIs, and select $GMAIL_SENDER_ACCOUNT. If warned that the app is unverified, verify the project name and exact scope before continuing."
+step "Exchange the authorization code for tokens. Copy the refresh token; do not paste it into this wizard, shell history, screenshots, or an issue."
+open_url "https://console.cloud.google.com/security/secret-manager?project=$GCP_PROJECT_ID"
+step "Add the client ID, client secret, and refresh token directly as versions of gmail-oauth-client-id, gmail-oauth-client-secret, and gmail-oauth-refresh-token."
+warn "Only the sender grants OAuth. A final token created in Testing will expire after seven days; confirm the app says In production before continuing."
+pause "Press Enter after the three Gmail OAuth secret versions exist in regional Secret Manager."
+
+stage "Database login and remaining secrets"
+open_url "https://console.cloud.google.com/security/secret-manager?project=$GCP_PROJECT_ID"
 step "Create the least-privilege PostgreSQL login and schema access. Keep its password out of Terraform and GitHub."
-step "Enter these directly into regional Secret Manager: database-url, auth-secret, founder-emails, gmail-oauth-client-id, gmail-oauth-client-secret, and gmail-oauth-refresh-token."
+step "Enter these directly into regional Secret Manager: database-url, auth-secret, and founder-emails. Confirm the three Gmail OAuth secret versions from the previous stage are also present."
 step "Use the Cloud SQL Unix-socket database URL in docs/provision-gcp.md."
 warn "This wizard deliberately never stores, displays, or uploads runtime secrets."
 pause "Press Enter after each required Secret Manager version has been added."

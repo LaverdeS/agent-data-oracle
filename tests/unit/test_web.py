@@ -21,6 +21,8 @@ async def test_root_renders_the_product_boundary(
     assert "No payment is accepted" in response.text
     assert "30 days after the phase closes" in response.text
     assert "Google Cloud in Frankfurt" in response.text
+    assert "processed by consumer Gmail" in response.text
+    assert "Google Workspace" not in response.text
     assert "not legal advice" in response.text
     assert "not endorsed by CPSC" in response.text
     assert 'href="/sign-in"' in response.text

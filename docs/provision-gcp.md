@@ -31,9 +31,13 @@ customer account, or authorize collection of validation data.
    history, merge queue, and deployment-before-merge disabled for now. The
    delivery workflow remains manual; the environment approval is the live
    deployment gate, not an approval required for every code change.
-5. In Google Workspace, create a dedicated sender mailbox and keep its recovery
-   controls with the founder. Workspace email processing is the documented
-   non-Frankfurt transfer exception.
+5. Choose a founder-controlled consumer Gmail sender for this bounded phase.
+   A separate free Gmail account is preferred; reusing the founder's existing
+   account is permitted only after recording the larger security, privacy, and
+   availability blast radius in #21. Enable two-step verification, verify the
+   recovery email and phone, and keep recovery material with the founder. No
+   Workspace subscription or custom domain is required. Consumer Gmail email
+   processing is the documented non-Frankfurt transfer exception.
 
 ## 2. Create the regional foundation
 
@@ -75,15 +79,41 @@ or a frontend asset.
 | `database-url` | `postgresql+psycopg://…?host=/cloudsql/CONNECTION_NAME` |
 | `auth-secret` | A newly generated, stable secret of at least 24 bytes |
 | `founder-emails` | Comma-separated founder email addresses |
-| `gmail-oauth-client-id` | Workspace Gmail API OAuth client ID |
-| `gmail-oauth-client-secret` | Workspace Gmail API OAuth client secret |
-| `gmail-oauth-refresh-token` | Refresh token for only the dedicated sender mailbox |
+| `gmail-oauth-client-id` | Consumer Gmail API OAuth web-client ID |
+| `gmail-oauth-client-secret` | Consumer Gmail API OAuth web-client secret |
+| `gmail-oauth-refresh-token` | Offline refresh token for only the founder-controlled sender |
 
-In the Google Cloud console, enable the Gmail API for the Workspace project,
-create a restricted OAuth client, authorize only `gmail.send` for the sender,
-and generate its refresh token through the founder-controlled consent flow.
-Keep the client secret and refresh token out of GitHub: the running service
-reads them from Secret Manager.
+Use the production Google Cloud project for the sender authorization:
+
+1. Enable the [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com).
+2. Open [Google Auth Platform](https://console.cloud.google.com/auth/overview).
+   Set the audience to **External**, provide current founder contact details,
+   and add only the sensitive
+   `https://www.googleapis.com/auth/gmail.send` scope. It permits sending but
+   does not permit reading the mailbox.
+3. Set the publishing status to **In production** before issuing the final
+   refresh token. A token issued while the external app remains in **Testing**
+   expires after seven days. This sender-only personal-use configuration has
+   one authorizing Google user; recipients of sign-in links do not authorize
+   Google access. Recheck Google's current personal-use exemption and OAuth
+   user-cap rules at provisioning time. The sender will see an unverified-app
+   warning unless the app is verified.
+4. Create a **Web application** OAuth client with
+   `https://developers.google.com/oauthplayground` as an authorized redirect
+   URI. Keep its client ID and secret in the founder's password manager until
+   they are entered directly into Secret Manager.
+5. In the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/),
+   open settings, enable **Use your own OAuth credentials**, select offline
+   access and forced consent, and enter that web client's ID and secret.
+   Authorize only `gmail.send` while signed in as the chosen sender, exchange
+   the code, and copy the refresh token directly into the corresponding
+   regional Secret Manager secret version.
+
+Keep the client secret and refresh token out of GitHub, shell history,
+`.provisioning.env`, screenshots, and issue comments. The running service reads
+them from Secret Manager. Ticket #21 must also implement and test its global
+limit of 100 admitted sign-in delivery requests per rolling 24 hours before it
+can close; the existing per-email and per-network limits remain in force.
 
 ## 4. Bootstrap and connect GitHub delivery
 

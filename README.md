@@ -132,7 +132,11 @@ bash scripts/provision-gcp.sh
 The wizard stores only non-secret progress values in ignored
 `.provisioning.env`; enter production secrets directly into Secret Manager. It
 includes an explicit Cloud SQL “park or go live” step: a parked database keeps
-its data but makes the deployed application unavailable to users.
+its data but makes the deployed application unavailable to users. The bounded
+phase may use a founder-controlled consumer Gmail sender without a Workspace
+subscription; the wizard records whether a separate free sender or the
+founder's existing account was chosen and keeps all OAuth secrets out of the
+progress file.
 
 ## Quality gates
 
