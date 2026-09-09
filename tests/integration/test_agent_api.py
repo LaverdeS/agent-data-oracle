@@ -21,7 +21,8 @@ async def evidence_database(postgres_url: str) -> AsyncEngine:
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE auth_attempts, operators, cpsc_current_records, "
+                "TRUNCATE sign_in_delivery_admissions, auth_attempts, operators, "
+                "cpsc_current_records, "
                 "cpsc_revision_records, cpsc_source_observations, "
                 "cpsc_recall_versions, cpsc_recalls, cpsc_source_revisions, "
                 "cpsc_ingestion_runs CASCADE"

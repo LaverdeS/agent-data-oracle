@@ -26,6 +26,8 @@ from agent_data_oracle.database import Database
 LOGIN_TOKEN_LIFETIME = timedelta(minutes=15)
 SESSION_LIFETIME = timedelta(hours=12)
 REAUTHENTICATION_LIFETIME = timedelta(minutes=15)
+SIGN_IN_DELIVERY_LIMIT = 100
+SIGN_IN_DELIVERY_WINDOW = timedelta(hours=24)
 auth_logger = logging.getLogger("agent_data_oracle.auth")
 
 
@@ -275,6 +277,12 @@ class HumanAccess:
         token: str | None = None
 
         async with self._database.transaction() as connection:
+            await connection.execute(
+                text(
+                    "SELECT pg_advisory_xact_lock("
+                    "hashtextextended('sign-in-delivery-global', 0))"
+                )
+            )
             for subject_hash in (network_hash, email_hash):
                 await connection.execute(
                     text(
@@ -309,6 +317,13 @@ class HumanAccess:
             count_by_kind = {
                 str(row["subject_kind"]): int(row["attempt_count"]) for row in counts
             }
+            global_delivery_count = await connection.scalar(
+                text(
+                    "SELECT count(*) FROM sign_in_delivery_admissions "
+                    "WHERE admitted_at > :window_start"
+                ),
+                {"window_start": now - SIGN_IN_DELIVERY_WINDOW},
+            )
             await connection.execute(
                 text(
                     "INSERT INTO auth_attempts "
@@ -326,9 +341,17 @@ class HumanAccess:
                 normalized is not None
                 and count_by_kind.get("email", 0) < 5
                 and count_by_kind.get("network", 0) < 20
+                and int(global_delivery_count or 0) < SIGN_IN_DELIVERY_LIMIT
             )
             if allowed:
                 token = secrets.token_urlsafe(32)
+                await connection.execute(
+                    text(
+                        "INSERT INTO sign_in_delivery_admissions (admitted_at) "
+                        "VALUES (:admitted_at)"
+                    ),
+                    {"admitted_at": now},
+                )
                 await connection.execute(
                     text(
                         "INSERT INTO login_tokens "

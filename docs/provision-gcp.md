@@ -111,9 +111,10 @@ Use the production Google Cloud project for the sender authorization:
 
 Keep the client secret and refresh token out of GitHub, shell history,
 `.provisioning.env`, screenshots, and issue comments. The running service reads
-them from Secret Manager. Ticket #21 must also implement and test its global
-limit of 100 admitted sign-in delivery requests per rolling 24 hours before it
-can close; the existing per-email and per-network limits remain in force.
+them from Secret Manager. The application atomically admits no more than 100
+sign-in delivery requests per rolling 24 hours across all instances; the
+existing per-email and per-network limits remain in force. Exhaustion keeps the
+public response generic and creates no deliverable login token.
 
 ## 4. Bootstrap and connect GitHub delivery
 

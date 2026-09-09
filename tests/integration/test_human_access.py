@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -43,7 +44,8 @@ async def access_database(postgres_url: str) -> AsyncIterator[None]:
         await connection.execute(
             text(
                 "TRUNCATE auth_recovery_codes, founder_totp_factors, "
-                "browser_sessions, login_tokens, auth_attempts, operators CASCADE"
+                "browser_sessions, login_tokens, sign_in_delivery_admissions, "
+                "auth_attempts, operators CASCADE"
             )
         )
         await connection.execute(
@@ -463,6 +465,102 @@ async def test_sign_in_abuse_controls_do_not_retain_network_address(
     assert invalid.text == responses[0].text
     assert all(len(value) == 64 for value in attempt_hashes)
     assert all("127.0.0.1" not in value for value in attempt_hashes)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_sign_in_delivery_admission_is_globally_limited_per_rolling_day(
+    postgres_url: str, access_database: None
+) -> None:
+    del access_database
+    email = LocalCaptureEmailProvider()
+    clock = MutableClock(datetime(2026, 9, 4, 10, 0, tzinfo=UTC))
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email,
+        clock=clock,
+        public_origin="https://test",
+        secure_cookies=True,
+    )
+
+    async with app.router.lifespan_context(app):
+        clients = [
+            AsyncClient(
+                transport=ASGITransport(
+                    app=app, client=(f"198.51.100.{index + 1}", 123)
+                ),
+                base_url="https://test",
+            )
+            for index in range(7)
+        ]
+        try:
+            csrf_tokens = [
+                (await client.get("/sign-in")).cookies["ado_csrf"] for client in clients
+            ]
+            for request_number in range(99):
+                client_index = request_number // 20
+                response = await clients[client_index].post(
+                    "/auth/sign-in",
+                    data={
+                        "email": f"operator-{request_number}@example.com",
+                        "csrf_token": csrf_tokens[client_index],
+                    },
+                )
+                assert response.status_code == 202
+
+            boundary_responses = await asyncio.gather(
+                *(
+                    clients[client_index].post(
+                        "/auth/sign-in",
+                        data={
+                            "email": f"boundary-{client_index}@example.com",
+                            "csrf_token": csrf_tokens[client_index],
+                        },
+                    )
+                    for client_index in (5, 6)
+                )
+            )
+
+            clock.advance(timedelta(hours=23, minutes=59))
+            still_capped = await clients[5].post(
+                "/auth/sign-in",
+                data={
+                    "email": "after-23-hours@example.com",
+                    "csrf_token": csrf_tokens[5],
+                },
+            )
+            engine = create_async_engine(postgres_url)
+            try:
+                async with engine.connect() as connection:
+                    tokens_at_cap = await connection.scalar(
+                        text("SELECT count(*) FROM login_tokens")
+                    )
+                clock.advance(timedelta(minutes=1))
+                next_window = await clients[5].post(
+                    "/auth/sign-in",
+                    data={
+                        "email": "after-24-hours@example.com",
+                        "csrf_token": csrf_tokens[5],
+                    },
+                )
+                async with engine.connect() as connection:
+                    tokens_after_window = await connection.scalar(
+                        text("SELECT count(*) FROM login_tokens")
+                    )
+            finally:
+                await engine.dispose()
+        finally:
+            await asyncio.gather(*(client.aclose() for client in clients))
+
+    assert all(response.status_code == 202 for response in boundary_responses)
+    assert boundary_responses[0].text == boundary_responses[1].text
+    assert still_capped.status_code == 202
+    assert still_capped.text == boundary_responses[0].text
+    assert next_window.status_code == 202
+    assert tokens_at_cap == 100
+    assert tokens_after_window == 101
+    assert len(email.deliveries) == 101
 
 
 @pytest.mark.asyncio
