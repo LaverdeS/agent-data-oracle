@@ -185,7 +185,17 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 
 ENV_FILE="${PROVISIONING_ENV_FILE:-.provisioning.env}"
-TOTAL_STAGES=13
+TOTAL_STAGES=19
+
+branding_url_uses_domain() {
+  local url="$1" domain="$2" host
+  [[ "$url" == https://* ]] || return 1
+  host="${url#https://}"
+  host="${host%%/*}"
+  [[ -n "$host" && "$host" != *":"* && "$host" != *"@"* ]] || return 1
+  host="${host,,}"
+  [[ "$host" == "$domain" || "$host" == *."$domain" ]]
+}
 
 banner "Agent Data Oracle production provisioning"
 
@@ -222,8 +232,57 @@ step "Do not allow force pushes or branch deletion. Keep the admin bypass only f
 step "Do not add Google service-account keys or production secrets to GitHub."
 pause "Press Enter after the production environment is protected."
 
-stage "Consumer Gmail sender and OAuth client"
-say "No Workspace subscription or custom domain is required for this bounded phase."
+stage "Choose the OAuth branding domain"
+say "The application remains on its generated run.app address. This domain is used only for Google's public OAuth branding pages; it does not require Workspace or a custom application load balancer."
+ask OAUTH_BRANDING_DOMAIN "Paste the bare domain you propose using, without https:// or a path (for example, example.com):"
+OAUTH_BRANDING_DOMAIN="${OAUTH_BRANDING_DOMAIN,,}"
+if [[ ! "$OAUTH_BRANDING_DOMAIN" =~ ^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$ ]]; then
+  warn "The branding domain must be a non-empty bare domain such as example.com. Nothing was changed in Google Auth Platform."
+  exit 1
+fi
+warn "Registering a new domain creates a paid renewable commitment. Record its price, registrar, renewal owner, and recovery method for #35."
+if ! confirm "Do you approve using or registering $OAUTH_BRANDING_DOMAIN and accept its renewal responsibility"; then
+  warn "Provisioning stopped before any domain purchase or OAuth configuration."
+  exit 1
+fi
+step "If you do not already own the domain, register it now through the founder-controlled registrar account. Enable renewal and secure the registrar account and recovery method."
+if ! confirm "Do you now control $OAUTH_BRANDING_DOMAIN in the founder registrar account"; then
+  warn "Provisioning stopped before public-page or OAuth configuration. Finish domain registration, then rerun the wizard."
+  exit 1
+fi
+write_env OAUTH_BRANDING_DOMAIN "$OAUTH_BRANDING_DOMAIN"
+
+stage "Publish the OAuth branding pages"
+step "Publish a public HTTPS homepage that names Agent Data Oracle, describes its evidence-queue and sign-in-email functions, and links to its privacy policy and terms. The pages must not require sign-in."
+step "The privacy page must accurately disclose how Google user data is accessed, used, stored, shared, retained, and deleted. State that the sender's authorization is used solely to send sign-in links with gmail.send, cannot read the mailbox, is stored in Google Secret Manager, and follows Google's Limited Use requirements."
+ask OAUTH_APP_HOME_URL "Paste the public OAuth application homepage URL:"
+ask OAUTH_PRIVACY_POLICY_URL "Paste the public privacy-policy URL:"
+ask OAUTH_TERMS_URL "Paste the public terms-of-service URL:"
+if ! branding_url_uses_domain "$OAUTH_APP_HOME_URL" "$OAUTH_BRANDING_DOMAIN" ||
+   ! branding_url_uses_domain "$OAUTH_PRIVACY_POLICY_URL" "$OAUTH_BRANDING_DOMAIN" ||
+   ! branding_url_uses_domain "$OAUTH_TERMS_URL" "$OAUTH_BRANDING_DOMAIN"; then
+  warn "All three URLs must use HTTPS and the verified domain or one of its subdomains. Nothing was changed in Google Auth Platform."
+  exit 1
+fi
+write_env OAUTH_APP_HOME_URL "$OAUTH_APP_HOME_URL"
+write_env OAUTH_PRIVACY_POLICY_URL "$OAUTH_PRIVACY_POLICY_URL"
+write_env OAUTH_TERMS_URL "$OAUTH_TERMS_URL"
+if ! confirm "Are all three pages public, final enough to show the sender, and linked from the homepage"; then
+  warn "Provisioning stopped before Google Auth Platform configuration. Publish or correct the pages, then rerun the wizard."
+  exit 1
+fi
+
+stage "Verify the OAuth branding domain"
+open_url "https://search.google.com/search-console/welcome"
+step "While signed in as a production-project owner or editor, add the domain as a Domain property and complete Google's DNS TXT-record ownership check."
+step "Open each saved URL in a signed-out browser window and confirm it loads over HTTPS. Confirm the homepage links to the same privacy and terms URLs."
+if ! confirm "Does Search Console show domain ownership verified and do all three signed-out page checks pass"; then
+  warn "Provisioning stopped before OAuth configuration. Finish domain verification or repair the pages, then rerun the wizard."
+  exit 1
+fi
+
+stage "Secure the consumer Gmail sender"
+say "Use consumer Gmail with only gmail.send. The OAuth branding domain does not host the application and does not create a Workspace subscription."
 step "Prefer a new free Gmail account used only for Agent Data Oracle sign-in mail. Reusing your existing Gmail account is allowed, but it exposes that address and combines its security and availability with production access."
 ask GMAIL_SENDER_ACCOUNT "Paste the founder-controlled consumer Gmail sender address (never paste its password):"
 write_env GMAIL_SENDER_ACCOUNT "$GMAIL_SENDER_ACCOUNT"
@@ -235,15 +294,40 @@ else
 fi
 open_url "https://myaccount.google.com/security"
 step "While signed in as the sender, enable two-step verification and verify its recovery email and phone. Store recovery material in the founder's password manager."
+if ! confirm "Are sender two-step verification and recovery controls complete"; then
+  warn "Provisioning stopped before Google Auth Platform configuration. Secure the sender, then rerun the wizard."
+  exit 1
+fi
+
+stage "Configure and publish OAuth branding"
 open_url "https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=$GCP_PROJECT_ID"
 step "Enable the Gmail API in the production project."
-open_url "https://console.cloud.google.com/auth/overview?project=$GCP_PROJECT_ID"
-step "In Google Auth Platform, set Audience to External and provide current founder support and developer contact details."
-step "Under Data Access, add only https://www.googleapis.com/auth/gmail.send. It is a sensitive scope, not a restricted scope, and cannot read the mailbox."
-step "Under Audience, click Publish app so the status is In production before the final token is issued. For this sender-only personal-use app, do not add public operators as OAuth users; they only receive email."
-warn "The sender will see an unverified-app warning. Recheck Google's current personal-use exemption and quota terms before authorizing. A token issued while the app is in Testing expires after seven days."
+open_url "https://console.cloud.google.com/auth/branding?project=$GCP_PROJECT_ID"
+step "Under Branding, use Agent Data Oracle as the app name, select a monitored founder address as User support email, and keep the founder in Developer contact information. Do not upload a logo for this bounded phase."
+step "Remove stale or additional Authorized domains, then add $OAUTH_BRANDING_DOMAIN so it is the only entry. Set Application home page to $OAUTH_APP_HOME_URL, Privacy policy to $OAUTH_PRIVACY_POLICY_URL, and Terms of Service to $OAUTH_TERMS_URL, then save."
+step "Click Verify Branding. Fix any reported domain or page issue; do not use placeholder URLs. When the status becomes Ready to publish, click Publish branding within seven days."
+if ! confirm "Does Google Auth Platform show the branding as published with exactly the saved domain and URLs"; then
+  warn "Provisioning stopped before audience publication or OAuth client creation. Finish branding verification and publication, then rerun the wizard."
+  exit 1
+fi
+
+stage "Publish the OAuth audience and data access"
+open_url "https://console.cloud.google.com/auth/audience?project=$GCP_PROJECT_ID"
+step "Set Audience to External. Do not add application users as OAuth users; only the sender authorizes Gmail access."
+open_url "https://console.cloud.google.com/auth/dataaccess?project=$GCP_PROJECT_ID"
+step "Add only https://www.googleapis.com/auth/gmail.send. It is a sensitive scope, not a restricted scope, and cannot read the mailbox."
+open_url "https://console.cloud.google.com/auth/audience?project=$GCP_PROJECT_ID"
+step "Click Publish app and confirm the publishing status is In production before the final token is issued."
+warn "This sender-only personal-use app may remain unverified and show the sender a warning. Recheck Google's current personal-use exemption and quota terms before authorizing. Do not continue in Testing: a Gmail-scoped refresh token issued there expires after seven days."
+if ! confirm "Does Audience show In production and does Data Access contain only gmail.send"; then
+  warn "Provisioning stopped before OAuth client creation. Correct audience or scope configuration, then rerun the wizard."
+  exit 1
+fi
+
+stage "Create the OAuth web client"
+open_url "https://console.cloud.google.com/auth/clients?project=$GCP_PROJECT_ID"
 step "Under Clients, create a Web application OAuth client. Add https://developers.google.com/oauthplayground as an authorized redirect URI. Save its client ID and secret temporarily in the founder's password manager, never in this wizard or GitHub."
-pause "Press Enter after the sender account and OAuth web client are ready."
+pause "Press Enter after the OAuth web client is saved and its credentials are in the founder's password manager."
 
 stage "Create Frankfurt infrastructure"
 step "Install Terraform and gcloud, authenticate as the founder, and run from the repository root:"

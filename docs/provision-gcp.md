@@ -35,9 +35,23 @@ customer account, or authorize collection of validation data.
    A separate free Gmail account is preferred; reusing the founder's existing
    account is permitted only after recording the larger security, privacy, and
    availability blast radius in #21. Enable two-step verification, verify the
-   recovery email and phone, and keep recovery material with the founder. No
-   Workspace subscription or custom domain is required. Consumer Gmail email
-   processing is the documented non-Frankfurt transfer exception.
+   recovery email and phone, and keep recovery material with the founder.
+   Consumer Gmail email processing is the documented non-Frankfurt transfer
+   exception.
+6. Choose or register one founder-controlled domain for Google OAuth branding
+   only. This does not require a Workspace subscription and does not move the
+   application from its generated `run.app` address. Keep registrar ownership,
+   renewal, and recovery under founder control. On that domain, publish a
+   public HTTPS homepage that identifies Agent Data Oracle, describes its
+   evidence-queue and sign-in-email functions, and links to public
+   privacy-policy and terms pages. The privacy page must accurately disclose
+   how Google user data is accessed, used, stored, shared, retained, and
+   deleted. It must state that the sender's authorization is used solely to
+   send sign-in links with `gmail.send`, cannot read the mailbox, is stored in
+   Google Secret Manager, and follows Google's Limited Use requirements.
+   Verify the domain in Google Search Console using a production-project owner
+   or editor account. Record the domain and exact three URLs as non-secret
+   provisioning evidence.
 
 ## 2. Create the regional foundation
 
@@ -86,23 +100,31 @@ or a frontend asset.
 Use the production Google Cloud project for the sender authorization:
 
 1. Enable the [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com).
-2. Open [Google Auth Platform](https://console.cloud.google.com/auth/overview).
-   Set the audience to **External**, provide current founder contact details,
-   and add only the sensitive
+2. Open [Google Auth Platform Branding](https://console.cloud.google.com/auth/branding).
+   Use **Agent Data Oracle** as the app name, a monitored founder address as
+   the support address, and current founder developer contacts. Do not upload
+   a logo for this bounded phase. Remove stale or additional entries so
+   **Authorized domains** contains exactly the verified branding domain, then
+   enter the exact public homepage, privacy-policy, and terms URLs. Confirm all
+   three URL hosts use that domain or its subdomains, load over HTTPS without
+   authentication, and are linked from the homepage. Save the draft, click
+   **Verify Branding**, fix any reported issue, and after the status becomes
+   **Ready to publish**, click **Publish branding** within seven days.
+3. Set the audience to **External** and add only the sensitive
    `https://www.googleapis.com/auth/gmail.send` scope. It permits sending but
    does not permit reading the mailbox.
-3. Set the publishing status to **In production** before issuing the final
+4. Set the publishing status to **In production** before issuing the final
    refresh token. A token issued while the external app remains in **Testing**
    expires after seven days. This sender-only personal-use configuration has
    one authorizing Google user; recipients of sign-in links do not authorize
    Google access. Recheck Google's current personal-use exemption and OAuth
    user-cap rules at provisioning time. The sender will see an unverified-app
    warning unless the app is verified.
-4. Create a **Web application** OAuth client with
+5. Create a **Web application** OAuth client with
    `https://developers.google.com/oauthplayground` as an authorized redirect
    URI. Keep its client ID and secret in the founder's password manager until
    they are entered directly into Secret Manager.
-5. In the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/),
+6. In the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/),
    open settings, enable **Use your own OAuth credentials**, select offline
    access and forced consent, and enter that web client's ID and secret.
    Authorize only `gmail.send` while signed in as the chosen sender, exchange
@@ -135,7 +157,8 @@ to obtain the generated service URL; it must not be used by an operator. Copy
 that URL from the Terraform `service_url` output and apply the same command
 once more with `-var public_origin=https://GENERATED.run.app`. Only then can
 the sign-in shell issue canonical links. The service uses Cloud Run's generated
-`run.app` HTTPS hostname; do not attach a custom domain or load balancer.
+`run.app` HTTPS hostname; do not attach the OAuth branding domain to the service
+and do not add a custom load balancer.
 
 Add these non-secret GitHub Actions environment variables to `production`:
 

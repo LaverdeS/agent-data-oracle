@@ -135,8 +135,9 @@ includes an explicit Cloud SQL “park or go live” step: a parked database kee
 its data but makes the deployed application unavailable to users. The bounded
 phase may use a founder-controlled consumer Gmail sender without a Workspace
 subscription; the wizard records whether a separate free sender or the
-founder's existing account was chosen and keeps all OAuth secrets out of the
-progress file.
+founder's existing account was chosen. Durable OAuth also requires one
+founder-controlled domain for public branding pages, but the application stays
+on `run.app`. The wizard keeps all OAuth secrets out of the progress file.
 
 ## Quality gates
 
