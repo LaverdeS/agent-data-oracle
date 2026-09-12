@@ -2,8 +2,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from agent_data_oracle.auth import LocalCaptureEmailProvider
-from agent_data_oracle.preview_access import PreviewAccess
 from agent_data_oracle.web import create_app
+from tests.preview import founder_preview_access
 
 
 @pytest.mark.asyncio
@@ -41,11 +41,7 @@ async def test_preview_root_does_not_present_usage_learning_as_active(
         public_origin="https://test",
         secure_cookies=True,
         founder_emails=frozenset({"founder@example.com"}),
-        preview_access=PreviewAccess.founder_only(
-            access_secret="founder-held-preview-secret",
-            recipient_emails=frozenset({"founder@example.com"}),
-            founder_emails=frozenset({"founder@example.com"}),
-        ),
+        preview_access=founder_preview_access("founder@example.com"),
     )
 
     async with AsyncClient(
@@ -86,8 +82,7 @@ def test_preview_recipient_allowlist_can_only_contain_founders(
     with pytest.raises(
         ValueError, match="preview recipients must all be configured founders"
     ):
-        PreviewAccess.founder_only(
-            access_secret="founder-held-preview-secret",
-            recipient_emails=frozenset({"visitor@example.com"}),
+        founder_preview_access(
+            "visitor@example.com",
             founder_emails=frozenset({"founder@example.com"}),
         )

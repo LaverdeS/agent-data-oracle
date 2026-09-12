@@ -15,9 +15,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from agent_data_oracle.auth import LocalCaptureEmailProvider
-from agent_data_oracle.preview_access import PreviewAccess
 from agent_data_oracle.schema import migrate_to_head
 from agent_data_oracle.web import create_app
+from tests.preview import founder_preview_access
 
 
 class MutableClock:
@@ -125,11 +125,7 @@ async def test_preview_sign_in_requires_gate_and_founder_recipient_allowlist(
         public_origin="https://test",
         secure_cookies=True,
         founder_emails=frozenset({"founder@example.com"}),
-        preview_access=PreviewAccess.founder_only(
-            access_secret="founder-held-preview-secret",
-            recipient_emails=frozenset({"founder@example.com"}),
-            founder_emails=frozenset({"founder@example.com"}),
-        ),
+        preview_access=founder_preview_access("founder@example.com"),
     )
 
     async with (
@@ -205,9 +201,8 @@ async def test_preview_allowlist_is_rechecked_when_magic_link_is_redeemed(
     }
     issuing_app = create_app(
         **shared_arguments,
-        preview_access=PreviewAccess.founder_only(
-            access_secret="founder-held-preview-secret",
-            recipient_emails=frozenset({"founder@example.com"}),
+        preview_access=founder_preview_access(
+            "founder@example.com",
             founder_emails=shared_arguments["founder_emails"],
         ),
     )
@@ -231,9 +226,8 @@ async def test_preview_allowlist_is_rechecked_when_magic_link_is_redeemed(
 
     restricted_app = create_app(
         **shared_arguments,
-        preview_access=PreviewAccess.founder_only(
-            access_secret="founder-held-preview-secret",
-            recipient_emails=frozenset({"replacement-founder@example.com"}),
+        preview_access=founder_preview_access(
+            "replacement-founder@example.com",
             founder_emails=shared_arguments["founder_emails"],
         ),
     )
@@ -284,9 +278,8 @@ async def test_preview_allowlist_is_rechecked_for_existing_browser_session(
     }
     admitted_app = create_app(
         **shared_arguments,
-        preview_access=PreviewAccess.founder_only(
-            access_secret="founder-held-preview-secret",
-            recipient_emails=frozenset({"founder@example.com"}),
+        preview_access=founder_preview_access(
+            "founder@example.com",
             founder_emails=shared_arguments["founder_emails"],
         ),
     )
@@ -322,9 +315,8 @@ async def test_preview_allowlist_is_rechecked_for_existing_browser_session(
 
     restricted_app = create_app(
         **shared_arguments,
-        preview_access=PreviewAccess.founder_only(
-            access_secret="founder-held-preview-secret",
-            recipient_emails=frozenset({"replacement-founder@example.com"}),
+        preview_access=founder_preview_access(
+            "replacement-founder@example.com",
             founder_emails=shared_arguments["founder_emails"],
         ),
     )

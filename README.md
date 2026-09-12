@@ -135,11 +135,11 @@ but never print or commit it.
 Enter runtime secrets directly into regional Secret Manager. The preview uses
 temporary External/Testing consumer-Gmail authorization, accepts its seven-day
 refresh-token expiry, and requires no Workspace subscription, purchased domain,
-public branding pages or usage-learning activation. The application remains on
-its generated `run.app` origin behind the founder-held preview gate and founder
-recipient allowlist. The checklist also covers the explicit running/parked
-Cloud SQL posture; a parked database keeps its data but makes the preview
-unavailable while storage and IP charges may continue.
+public branding pages or starting the usage-learning phase. The application
+remains on its generated `run.app` origin behind the founder-held preview gate
+and founder recipient allowlist. The checklist also covers the explicit
+running/parked Cloud SQL posture; a parked database keeps its data but makes
+the preview unavailable while storage and IP charges may continue.
 
 ## Quality gates
 

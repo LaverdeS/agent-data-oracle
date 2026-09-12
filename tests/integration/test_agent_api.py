@@ -9,10 +9,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from agent_data_oracle.auth import LocalCaptureEmailProvider
-from agent_data_oracle.preview_access import PreviewAccess
 from agent_data_oracle.schema import migrate_to_head
 from agent_data_oracle.web import create_app
 from tests.integration.test_evidence_queue import import_completed_fixture
+from tests.preview import founder_preview_access
 
 
 @pytest_asyncio.fixture
@@ -134,9 +134,8 @@ async def test_preview_rejects_founder_agent_key_after_owner_leaves_allowlist(
 
     preview_app = create_app(
         **shared_arguments,
-        preview_access=PreviewAccess.founder_only(
-            access_secret="founder-held-preview-secret",
-            recipient_emails=frozenset({"replacement-founder@example.com"}),
+        preview_access=founder_preview_access(
+            "replacement-founder@example.com",
             founder_emails=frozenset(
                 {"founder@example.com", "replacement-founder@example.com"}
             ),

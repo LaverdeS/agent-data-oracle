@@ -7,9 +7,10 @@
 ## Current disposition — 2026-09-11
 
 The founder does not own the proposed domain and has deferred domain costs,
-public hosting decisions, durable public sender authorization and usage-learning
-activation. The September 9 approval is superseded, not an instruction to resume
-Stage 4. Do not purchase a domain or continue the current production-OAuth wizard.
+public hosting decisions, durable public sender authorization and the start of
+the usage-learning phase. The September 9 approval is superseded, not an
+instruction to resume Stage 4. Do not purchase a domain or continue the current
+production-OAuth wizard.
 
 [#17](https://github.com/LaverdeS/agent-data-oracle/issues/17) now separates a
 founder-only development preview from a future usage-learning phase.
