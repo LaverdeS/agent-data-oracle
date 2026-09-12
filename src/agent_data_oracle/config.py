@@ -30,9 +30,11 @@ def founder_emails_from_environment() -> frozenset[str]:
     return normalized_email_set(os.environ.get("FOUNDER_EMAILS", "").split(","))
 
 
-def preview_access_from_environment(*, founder_emails: frozenset[str]) -> PreviewAccess:
+def preview_access_from_environment(
+    *, founder_emails: frozenset[str], access_secret: str | None = None
+) -> PreviewAccess:
     environment = os.environ.get("APP_ENV", "local").casefold()
-    secret = os.environ.get("PREVIEW_ACCESS_SECRET")
+    secret = access_secret or os.environ.get("PREVIEW_ACCESS_SECRET")
     configured_recipients = os.environ.get("PREVIEW_RECIPIENT_EMAILS")
     if (
         environment in {"local", "test"}
@@ -80,3 +82,33 @@ def public_origin_from_environment() -> str:
     return validated_public_origin(
         configured, require_https=environment not in {"local", "test"}
     )
+
+
+def validated_local_preview_harness(enabled: bool) -> bool:
+    environment = os.environ.get("APP_ENV", "local").casefold()
+    if enabled and environment not in {"local", "test"}:
+        raise RuntimeError("LOCAL_PREVIEW_HARNESS is forbidden outside local/test")
+    return enabled
+
+
+def local_preview_harness_from_environment() -> bool:
+    configured = os.environ.get("LOCAL_PREVIEW_HARNESS", "").casefold()
+    if configured not in {"", "0", "1", "false", "true"}:
+        raise RuntimeError("LOCAL_PREVIEW_HARNESS must be true or false")
+    return validated_local_preview_harness(configured in {"1", "true"})
+
+
+def provider_disclosure_from_environment() -> str:
+    environment = os.environ.get("APP_ENV", "local").casefold()
+    if environment in {"local", "test"}:
+        return (
+            "Application data stays in the founder's local development "
+            "environment. Sign-in links are captured in memory and are not sent "
+            "through an external email provider. GitHub is used for development "
+            "and CI without production data. Recorded CPSC fixtures make no live "
+            "source request."
+        )
+    configured = os.environ.get("PROVIDER_DISCLOSURE", "").strip()
+    if not configured:
+        raise RuntimeError("PROVIDER_DISCLOSURE is required outside local/test")
+    return configured

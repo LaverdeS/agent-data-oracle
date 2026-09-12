@@ -53,9 +53,11 @@ resolution, and verified, permissioned outcomes.
 - [uv](https://docs.astral.sh/uv/) 0.7.15
 - Docker with Compose
 
-Python dependencies resolve exactly from the committed `uv.lock` file. The
-same package supplies the web runtime, migration command, and short-lived job
-runtime.
+Application and ordinary test dependencies resolve exactly from the committed
+`uv.lock` file. The same package supplies the web runtime, migration command,
+and short-lived job runtime. The isolated browser harness pins its development
+image, Playwright package, and complete small transitive dependency set in the
+Dockerfile; those dependencies never enter the application image.
 
 ## Run locally
 
@@ -77,18 +79,38 @@ curl http://127.0.0.1:8080/ready
 ```
 
 Local mode uses an in-memory email capture provider and non-secure localhost
-cookies. Tests inject that provider to follow passwordless links without ever
-printing token values. A standalone browser cannot yet inspect the captured
-inbox; [#38](https://github.com/LaverdeS/agent-data-oracle/issues/38) owns the
-repeatable local-preview and browser-test harness.
+cookies. The ordinary local server does not expose captured links. The
+repository-isolated founder-preview harness enables loopback-only development
+routes so its browser journey can receive an in-process preview code and redeem
+a captured link without putting credentials in container metadata or printing
+or persisting the link token.
+
+Run the complete local founder preview from a shell with Python and Docker:
+
+```console
+python scripts/local_preview.py run
+```
+
+That command builds the production image, starts an isolated PostgreSQL
+database, applies migrations, imports a recorded CPSC fixture, waits for
+`/live` and `/ready`, and runs the founder browser and delegated-agent journeys.
+On success the preview remains at <http://127.0.0.1:18080>. Remove only its
+harness-owned containers and ephemeral data explicitly:
+
+```console
+python scripts/local_preview.py down
+```
+
+See [Local founder preview](docs/local-founder-preview.md) for the decisions,
+security boundaries, and evidence this run does and does not establish.
 
 Deployment remains deferred. The existing production configuration fails
 closed unless it receives a stable `AUTH_SECRET`, canonical HTTPS
-`PUBLIC_ORIGIN`, founder identities, preview gate and recipient allowlist, and
-real email-provider credentials. These settings document implemented security
-boundaries; they do not imply that a provider has been selected or a hosted
-environment exists. Sign-in links expire after 15 minutes and sessions after
-12 hours.
+`PUBLIC_ORIGIN`, founder identities, preview gate and recipient allowlist, real
+email-provider credentials, and a truthful `PROVIDER_DISCLOSURE`. These settings
+document implemented security boundaries; they do not imply that a provider
+has been selected or a hosted environment exists. Sign-in links expire after 15
+minutes and sessions after 12 hours.
 
 The local default database URL targets the Compose service. Set
 `DATABASE_URL` to a SQLAlchemy `postgresql+psycopg://` URL in other

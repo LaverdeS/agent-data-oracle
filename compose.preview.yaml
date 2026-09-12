@@ -1,0 +1,96 @@
+name: agent-data-oracle-preview
+
+x-app-environment: &app-environment
+  APP_ENV: local
+  DATABASE_URL: postgresql+psycopg://postgres@postgres:5432/agent_data_oracle_preview
+  FOUNDER_EMAILS: founder@example.com
+  LOCAL_PREVIEW_HARNESS: "true"
+  PREVIEW_RECIPIENT_EMAILS: founder@example.com
+  PUBLIC_ORIGIN: http://127.0.0.1:18080
+
+x-application: &application
+  build:
+    context: .
+    target: runtime
+  image: agent-data-oracle:local-preview
+  environment: *app-environment
+
+services:
+  postgres:
+    image: postgres:17.6-bookworm
+    environment:
+      POSTGRES_DB: agent_data_oracle_preview
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_data_oracle_preview"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  migrate:
+    <<: *application
+    command: ["migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  fixture:
+    <<: *application
+    command:
+      - job
+      - cpsc-import-fixture
+      - --fixture
+      - /fixtures/recall-10887.json
+      - --observed-at
+      - "2026-09-04T00:00:00Z"
+      - --expected-record-count
+      - "1"
+      - --source-url
+      - https://www.saferproducts.gov/RestWebServices/Recall?RecallID=10887&format=json
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./tests/fixtures/cpsc/recall-10887.json:/fixtures/recall-10887.json:ro
+
+  app:
+    <<: *application
+    depends_on:
+      fixture:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:18080:8080"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json, urllib.request;
+          assert json.load(urllib.request.urlopen('http://127.0.0.1:8080/live'))['status'] == 'live';
+          assert json.load(urllib.request.urlopen('http://127.0.0.1:8080/ready'))['status'] == 'ready'
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  journeys:
+    build:
+      context: .
+      target: browser-tests
+    environment:
+      APP_BASE_URL: http://127.0.0.1:8080
+      FOUNDER_EMAIL: founder@example.com
+      NO_PROXY: app,127.0.0.1,localhost
+    depends_on:
+      app:
+        condition: service_healthy
+    init: true
+    ipc: host
+    network_mode: service:app
+
+networks:
+  default:
+    internal: true

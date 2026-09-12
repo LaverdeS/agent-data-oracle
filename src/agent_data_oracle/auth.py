@@ -74,6 +74,14 @@ class LocalCaptureEmailProvider:
     async def send_sign_in_link(self, *, recipient: str, sign_in_url: str) -> None:
         self.deliveries.append(SignInDelivery(recipient, sign_in_url))
 
+    def claim_sign_in_link(self, *, recipient: str) -> str | None:
+        for index in range(len(self.deliveries) - 1, -1, -1):
+            delivery = self.deliveries[index]
+            if delivery.recipient == recipient:
+                self.deliveries.pop(index)
+                return delivery.sign_in_url
+        return None
+
 
 class GmailApiEmailProvider:
     """Deliver sign-in links through Gmail's narrow send-message endpoint."""

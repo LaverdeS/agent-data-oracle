@@ -28,17 +28,22 @@ from agent_data_oracle.auth import (
     AuthenticatedOperator,
     EmailProvider,
     HumanAccess,
+    LocalCaptureEmailProvider,
     SecondFactorResult,
     email_provider_from_environment,
+    normalize_email,
     utc_now,
 )
 from agent_data_oracle.config import (
     auth_secret_from_environment,
     database_url_from_environment,
     founder_emails_from_environment,
+    local_preview_harness_from_environment,
     preview_access_from_environment,
+    provider_disclosure_from_environment,
     public_origin_from_environment,
     secure_cookies_from_environment,
+    validated_local_preview_harness,
     validated_public_origin,
 )
 from agent_data_oracle.database import Database
@@ -98,6 +103,8 @@ def create_app(
     secure_cookies: bool | None = None,
     founder_emails: frozenset[str] | None = None,
     preview_access: PreviewAccess | None = None,
+    local_preview_harness: bool | None = None,
+    provider_disclosure: str | None = None,
 ) -> FastAPI:
     database = Database(database_url or database_url_from_environment())
     configured_founder_emails = normalized_email_set(
@@ -105,19 +112,37 @@ def create_app(
         if founder_emails is not None
         else founder_emails_from_environment()
     )
+    use_local_preview_harness = (
+        validated_local_preview_harness(local_preview_harness)
+        if local_preview_harness is not None
+        else local_preview_harness_from_environment()
+    )
+    if use_local_preview_harness and preview_access is not None:
+        raise ValueError("local preview harness manages its own preview access")
+    local_preview_access_secret = (
+        secrets.token_urlsafe(32) if use_local_preview_harness else None
+    )
     configured_preview_access = (
         preview_access
         if preview_access is not None
-        else preview_access_from_environment(founder_emails=configured_founder_emails)
+        else preview_access_from_environment(
+            founder_emails=configured_founder_emails,
+            access_secret=local_preview_access_secret,
+        )
     )
+    selected_email_provider: EmailProvider
+    if use_local_preview_harness:
+        if email_provider is not None and not isinstance(
+            email_provider, LocalCaptureEmailProvider
+        ):
+            raise ValueError("local preview harness requires local email capture")
+        selected_email_provider = email_provider or LocalCaptureEmailProvider()
+    else:
+        selected_email_provider = email_provider or email_provider_from_environment()
     human_access = HumanAccess(
         database=database,
         secret=auth_secret or auth_secret_from_environment(),
-        email_provider=(
-            email_provider
-            if email_provider is not None
-            else email_provider_from_environment()
-        ),
+        email_provider=selected_email_provider,
         clock=clock,
         founder_emails=configured_founder_emails,
         preview_access=configured_preview_access,
@@ -139,6 +164,11 @@ def create_app(
         validated_public_origin(public_origin, require_https=use_secure_cookies)
         if public_origin is not None
         else public_origin_from_environment()
+    )
+    configured_provider_disclosure = (
+        provider_disclosure
+        if provider_disclosure is not None
+        else provider_disclosure_from_environment()
     )
 
     @asynccontextmanager
@@ -273,6 +303,54 @@ def create_app(
             status_code=status_code,
         )
 
+    if use_local_preview_harness:
+        if local_preview_access_secret is None or not isinstance(
+            selected_email_provider, LocalCaptureEmailProvider
+        ):
+            raise AssertionError("local preview harness was configured inconsistently")
+
+        def local_harness_request(request: Request) -> bool:
+            return request.client is not None and request.client.host in {
+                "127.0.0.1",
+                "::1",
+            }
+
+        @app.post("/_local/preview-access", include_in_schema=False)
+        async def local_preview_access(request: Request) -> Response:
+            if not local_harness_request(request):
+                return HTMLResponse("Not found", status_code=404)
+            return JSONResponse({"preview_access_secret": local_preview_access_secret})
+
+        @app.post("/_local/sign-in-links/claim", include_in_schema=False)
+        async def claim_local_sign_in_link(request: Request) -> Response:
+            if not local_harness_request(request):
+                return HTMLResponse("Not found", status_code=404)
+            supplied = request.headers.get("authorization", "")
+            expected = f"Bearer {local_preview_access_secret}"
+            if not secrets.compare_digest(supplied, expected):
+                return HTMLResponse("Not found", status_code=404)
+            body = await request.body()
+            if len(body) > 1_024:
+                return HTMLResponse("Not found", status_code=404)
+            try:
+                payload = json.loads(body)
+                recipient_value = payload["recipient"]
+            except (KeyError, TypeError, json.JSONDecodeError):
+                return HTMLResponse("Not found", status_code=404)
+            recipient = (
+                normalize_email(recipient_value)
+                if isinstance(recipient_value, str)
+                else None
+            )
+            if recipient is None:
+                return HTMLResponse("Not found", status_code=404)
+            sign_in_url = selected_email_provider.claim_sign_in_link(
+                recipient=recipient
+            )
+            if sign_in_url is None:
+                return HTMLResponse("Not found", status_code=404)
+            return JSONResponse({"sign_in_url": sign_in_url})
+
     async def agent_for_scope(
         request: Request, required_scope: str
     ) -> AgentPrincipal | JSONResponse:
@@ -313,7 +391,10 @@ def create_app(
         return templates.TemplateResponse(
             request,
             "index.html",
-            {"founder_preview": configured_preview_access.is_enabled},
+            {
+                "founder_preview": configured_preview_access.is_enabled,
+                "provider_disclosure": configured_provider_disclosure,
+            },
         )
 
     @app.get("/sign-in", response_class=HTMLResponse)
