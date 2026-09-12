@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from agent_data_oracle.auth import utc_now
 from agent_data_oracle.database import Database
+from agent_data_oracle.preview_access import PreviewAccess
 
 ALLOWED_AGENT_SCOPES = frozenset(
     {
@@ -68,10 +69,15 @@ class AgentAccess:
     """Own bounded delegated API credentials without storing their secrets."""
 
     def __init__(
-        self, database: Database, *, clock: Callable[[], datetime] = utc_now
+        self,
+        database: Database,
+        *,
+        clock: Callable[[], datetime] = utc_now,
+        preview_access: PreviewAccess | None = None,
     ) -> None:
         self._database = database
         self._clock = clock
+        self._preview_access = preview_access or PreviewAccess.disabled()
 
     @staticmethod
     def _secret_hash(secret: str, salt: bytes) -> bytes:
@@ -184,10 +190,14 @@ class AgentAccess:
                 (
                     await connection.execute(
                         text(
-                            "SELECT agent_key_id, operator_id, secret_salt, "
-                            "secret_hash, scopes "
-                            "FROM agent_api_keys WHERE secret_prefix = :secret_prefix "
-                            "AND revoked_at IS NULL"
+                            "SELECT keys.agent_key_id, keys.operator_id, "
+                            "keys.secret_salt, keys.secret_hash, keys.scopes, "
+                            "operators.email_normalized "
+                            "FROM agent_api_keys AS keys "
+                            "JOIN operators ON "
+                            "operators.operator_id = keys.operator_id "
+                            "WHERE keys.secret_prefix = :secret_prefix "
+                            "AND keys.revoked_at IS NULL"
                         ),
                         {"secret_prefix": parts[1]},
                     )
@@ -199,6 +209,8 @@ class AgentAccess:
                 self._secret_hash(bearer_secret, bytes(row["secret_salt"])),
                 bytes(row["secret_hash"]),
             ):
+                raise AgentAuthenticationError("invalid bearer credential")
+            if not self._preview_access.admits_identity(row["email_normalized"]):
                 raise AgentAuthenticationError("invalid bearer credential")
             scopes = frozenset(row["scopes"])
             if required_scope not in scopes:

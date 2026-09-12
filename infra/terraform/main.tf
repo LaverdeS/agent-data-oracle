@@ -15,6 +15,8 @@ locals {
     "gmail-oauth-client-id",
     "gmail-oauth-client-secret",
     "gmail-oauth-refresh-token",
+    "preview-access-secret",
+    "preview-recipient-emails",
   ])
 }
 

@@ -22,6 +22,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import text
 
 from agent_data_oracle.database import Database
+from agent_data_oracle.preview_access import PreviewAccess
 
 LOGIN_TOKEN_LIFETIME = timedelta(minutes=15)
 SESSION_LIFETIME = timedelta(hours=12)
@@ -231,6 +232,7 @@ class HumanAccess:
         email_provider: EmailProvider,
         clock: Callable[[], datetime] = utc_now,
         founder_emails: frozenset[str] = frozenset(),
+        preview_access: PreviewAccess | None = None,
     ) -> None:
         if len(secret) < 24:
             raise ValueError("auth secret must contain at least 24 bytes")
@@ -239,6 +241,7 @@ class HumanAccess:
         self._email_provider = email_provider
         self._clock = clock
         self._founder_emails = founder_emails
+        self._preview_access = preview_access or PreviewAccess.disabled()
 
     def _digest(self, namespace: str, value: str) -> str:
         return hmac.new(
@@ -266,7 +269,12 @@ class HumanAccess:
         return hmac.compare_digest(self._digest("csrf", nonce), signature)
 
     async def request_sign_in(
-        self, *, email: str, network_identity: str, base_url: str
+        self,
+        *,
+        email: str,
+        network_identity: str,
+        base_url: str,
+        preview_access_secret: str = "",
     ) -> None:
         normalized = normalize_email(email)
         now = self._clock()
@@ -339,6 +347,9 @@ class HumanAccess:
             )
             allowed = (
                 normalized is not None
+                and self._preview_access.admits_sign_in(
+                    email=normalized, access_secret=preview_access_secret
+                )
                 and count_by_kind.get("email", 0) < 5
                 and count_by_kind.get("network", 0) < 20
                 and int(global_delivery_count or 0) < SIGN_IN_DELIVERY_LIMIT
@@ -392,6 +403,8 @@ class HumanAccess:
                 },
             )
             if not isinstance(email, str):
+                return None
+            if not self._preview_access.admits_identity(email):
                 return None
             operator_id = await connection.scalar(
                 text(
@@ -472,6 +485,8 @@ class HumanAccess:
                 .one_or_none()
             )
         if row is None:
+            return None
+        if not self._preview_access.admits_identity(row["email_normalized"]):
             return None
         return AuthenticatedOperator(
             operator_id=row["operator_id"],

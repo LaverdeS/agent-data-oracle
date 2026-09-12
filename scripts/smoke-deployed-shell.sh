@@ -5,6 +5,8 @@ set -euo pipefail
 
 origin="${1:?usage: scripts/smoke-deployed-shell.sh https://SERVICE.run.app}"
 origin="${origin%/}"
+: "${SMOKE_EMAIL:?set SMOKE_EMAIL to an allowlisted founder inbox}"
+: "${SMOKE_PREVIEW_ACCESS_SECRET:?set SMOKE_PREVIEW_ACCESS_SECRET securely}"
 cookie_jar="$(mktemp)"
 response_file="$(mktemp)"
 trap 'rm -f "$cookie_jar" "$response_file"' EXIT
@@ -16,12 +18,27 @@ page="$(curl --fail --silent --show-error --cookie-jar "$cookie_jar" "$origin/si
 csrf_token="$(printf '%s' "$page" | sed -n 's/.*name="csrf_token" value="\([^"]*\)".*/\1/p')"
 test -n "$csrf_token"
 
-status="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+rejected_status="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
   --cookie "$cookie_jar" --cookie-jar "$cookie_jar" \
   --data-urlencode "csrf_token=$csrf_token" \
-  --data-urlencode "email=${SMOKE_EMAIL:-founder-smoke@example.invalid}" \
+  --data-urlencode "email=$SMOKE_EMAIL" \
   "$origin/auth/sign-in")"
-test "$status" = "202"
+test "$rejected_status" = "202"
 grep -Fq "Check your email" "$response_file"
 
-printf 'Deployed health endpoints and generic sign-in response verified.\n'
+page="$(curl --fail --silent --show-error --cookie-jar "$cookie_jar" "$origin/sign-in")"
+csrf_token="$(printf '%s' "$page" | sed -n 's/.*name="csrf_token" value="\([^"]*\)".*/\1/p')"
+test -n "$csrf_token"
+
+admitted_status="$(printf '%s' "$SMOKE_PREVIEW_ACCESS_SECRET" | \
+  curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+    --cookie "$cookie_jar" --cookie-jar "$cookie_jar" \
+    --data-urlencode "csrf_token=$csrf_token" \
+    --data-urlencode "email=$SMOKE_EMAIL" \
+    --data-urlencode preview_access_secret@- \
+    "$origin/auth/sign-in")"
+test "$admitted_status" = "202"
+grep -Fq "Check your email" "$response_file"
+
+printf 'Health and generic rejected/admitted sign-in responses verified.\n'
+printf 'Confirm exactly one new message arrived at the allowlisted founder inbox.\n'

@@ -1,10 +1,45 @@
 # Consumer Gmail OAuth plan refactor
 
 - **Date:** 2026-09-09
-- **Status:** approved by the founder on 2026-09-09; implementation evidence remains pending
+- **Status:** superseded by the founder-approved preview plan on 2026-09-11. Historical analysis below is not an executable provisioning plan.
 - **Recorded in:** [#17](https://github.com/LaverdeS/agent-data-oracle/issues/17#issuecomment-5606597430) and [#21](https://github.com/LaverdeS/agent-data-oracle/issues/21#issuecomment-5606596922)
 
-## Recommendation
+## Current disposition — 2026-09-11
+
+The founder does not own the proposed domain and has deferred domain costs,
+public hosting decisions, durable public sender authorization and usage-learning
+activation. The September 9 approval is superseded, not an instruction to resume
+Stage 4. Do not purchase a domain or continue the current production-OAuth wizard.
+
+[#17](https://github.com/LaverdeS/agent-data-oracle/issues/17) now separates a
+founder-only development preview from a future usage-learning phase.
+[#21](https://github.com/LaverdeS/agent-data-oracle/issues/21) remains open for
+the preview: a tested founder access gate and recipient allowlist, temporary
+sender-only External/Testing Gmail authorization, regional secrets, the existing
+100-delivery rolling-day cap, deployed smoke/failure/recovery evidence and a
+verified running/parked cost posture. The seven-day Testing refresh-token expiry
+is accepted only for founder testing; this does not establish durable service.
+[Google token-expiration rules](https://developers.google.com/identity/protocols/oauth2#expiration).
+
+#22 no longer depends on deployment, and #31 core privacy no longer depends on
+#30 measurement. #30 owns future measurement cleanup and phase-close integration.
+#30 and #32–#35 are deferred public/usage-learning work, not gates for ordinary
+product development. [#37](https://github.com/LaverdeS/agent-data-oracle/issues/37)
+is a founder-led grilling task after the preview to assess intelligence features,
+product fit and technology choices, then generate agreed specs and tickets. It
+does not preselect features or write their specification now.
+
+The [existing checklist](../docs/provision-gcp.md) records the new preview plan.
+The script was unchanged in that planning-only session and was subsequently
+retired during #21 implementation; do not retrieve an older revision to resume it.
+GCP resource inspection failed on certificate validation; actual resources and
+exact Frankfurt prices remain unverified. Cloud Run allowance does not make
+Cloud SQL free, and parked SQL retains storage/IP charges.
+[Cloud Run pricing](https://cloud.google.com/run/pricing),
+[Cloud SQL pricing](https://cloud.google.com/sql/pricing),
+[SQL stop behavior](https://docs.cloud.google.com/sql/docs/postgres/start-stop-restart-instance#stop_an_instance).
+
+## Historical September 9 recommendation — superseded
 
 Allow one founder-controlled domain **only for Google OAuth branding**. Keep the application itself on its generated `run.app` address, keep the consumer Gmail sender, keep `gmail.send`, and keep Google Workspace out of scope.
 
@@ -52,7 +87,7 @@ Leave the dependency chain unchanged. #21 continues to block #22, #32, and #33. 
 
 [#30](https://github.com/LaverdeS/agent-data-oracle/issues/30) remains the **only** owner of phase admission, activation, batch/event limits, and cash controls. Completing #21 must not activate the usage-learning phase.
 
-## Founder decision required
+## Historical decision branch — superseded; do not execute
 
 Approve or reject buying/using one founder-controlled domain for OAuth branding only.
 

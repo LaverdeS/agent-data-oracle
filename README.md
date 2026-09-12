@@ -82,7 +82,11 @@ printing token values. A deployed environment must set `APP_ENV=production`, a
 stable `AUTH_SECRET` of at least 24 bytes, canonical HTTPS `PUBLIC_ORIGIN`, one
 or more comma-separated `FOUNDER_EMAILS`, and Secret Manager-supplied
 `GMAIL_OAUTH_CLIENT_ID`, `GMAIL_OAUTH_CLIENT_SECRET`, and
-`GMAIL_OAUTH_REFRESH_TOKEN` values. Production
+`GMAIL_OAUTH_REFRESH_TOKEN` values. The founder-only preview additionally
+requires a high-entropy `PREVIEW_ACCESS_SECRET` and comma-separated
+`PREVIEW_RECIPIENT_EMAILS`; every preview recipient must also be present in
+`FOUNDER_EMAILS`. Missing or empty preview configuration fails startup closed.
+Production
 sessions are `Secure`, HTTP-only, same-site cookies; sign-in links expire after
 15 minutes and sessions after 12 hours.
 

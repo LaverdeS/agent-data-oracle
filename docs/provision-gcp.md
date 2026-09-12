@@ -1,207 +1,166 @@
-# Founder provisioning checklist
+# Founder-only Cloud Run preview checklist
 
-This checklist prepares the authenticated shell in the Frankfurt topology. It
-does not activate the usage-learning phase, admit public users, create a
-customer account, or authorize collection of validation data.
+**Founder-approved plan, 2026-09-11. Implementation and deployment evidence are
+pending in [#21](https://github.com/LaverdeS/agent-data-oracle/issues/21).**
+This preview is for founder testing before continued product development. It
+admits no public operators and collects no usage-learning validation traffic.
+The superseded `scripts/provision-gcp.sh` paid-domain wizard has been retired:
+**do not retrieve an older revision and resume Stage 4 or its production-OAuth
+steps**. This document is the current human-operated checklist.
 
-## 1. Founder-owned accounts and approvals
+## 1. Preserve completed work and verify the foundation
 
-1. In the [Create a project page](https://console.cloud.google.com/projectcreate),
-   create a founder-owned production project. Use **Agent Data Oracle
-   Production** as its project name. Try `agent-data-oracle-prod` as its
-   globally unique project ID; if it is unavailable, use
-   `agent-data-oracle-prod-2026` or another short lowercase suffix. Record the
-   final project ID because it cannot be changed later. Select the
-   founder-controlled organization, or **No organization** for a personal
-   Google Cloud account, then click **Create**.
-2. Select the new project in the Google Cloud project selector. Go to
-   **Billing** and link the founder-owned billing account. Set budget alerts
-   and any supported spend-cap behavior, and record the responsible pause
-   owner. Creating the project or linking billing does not create the paid
-   database; the first Terraform apply does.
-3. Create a separate founder-owned backup project. Backup bucket and scheduled
-   backup provisioning belong to ticket #33; do not grant the backup writer
-   broader project access in this ticket.
-4. In GitHub, create the `production` environment and add the founder as its
-   required reviewer. Leave **Prevent self-review** off when the founder is the
-   only reviewer. Protect `main` with a lean rule: require a pull request,
-   require the existing `quality`, `secret-scan`, and `terraform` checks, leave
-   the branch-up-to-date requirement off, and require conversation resolution.
-   Do not allow force pushes or branch deletion. Leave signed commits, linear
-   history, merge queue, and deployment-before-merge disabled for now. The
-   delivery workflow remains manual; the environment approval is the live
-   deployment gate, not an approval required for every code change.
-5. Choose a founder-controlled consumer Gmail sender for this bounded phase.
-   A separate free Gmail account is preferred; reusing the founder's existing
-   account is permitted only after recording the larger security, privacy, and
-   availability blast radius in #21. Enable two-step verification, verify the
-   recovery email and phone, and keep recovery material with the founder.
-   Consumer Gmail email processing is the documented non-Frankfurt transfer
-   exception.
-6. Choose or register one founder-controlled domain for Google OAuth branding
-   only. This does not require a Workspace subscription and does not move the
-   application from its generated `run.app` address. Keep registrar ownership,
-   renewal, and recovery under founder control. On that domain, publish a
-   public HTTPS homepage that identifies Agent Data Oracle, describes its
-   evidence-queue and sign-in-email functions, and links to public
-   privacy-policy and terms pages. The privacy page must accurately disclose
-   how Google user data is accessed, used, stored, shared, retained, and
-   deleted. It must state that the sender's authorization is used solely to
-   send sign-in links with `gmail.send`, cannot read the mailbox, is stored in
-   Google Secret Manager, and follows Google's Limited Use requirements.
-   Verify the domain in Google Search Console using a production-project owner
-   or editor account. Record the domain and exact three URLs as non-secret
-   provisioning evidence.
+Keep the founder's completed Stages 1–3 and ignored `.provisioning.env`. Never
+print or commit that file. Do not recreate projects, billing, GitHub protections
+or Terraform state without inspecting what already exists. The GCP project and
+consumer-Gmail sender belong to separate founder-controlled accounts; redact
+both addresses in all evidence.
 
-## 2. Create the regional foundation
+The September 11 read-only GitHub check found remote `main` at `ca785e3` and no
+deployment-workflow runs. Local commits `efaee9d` and `9082c1d` remain unpushed.
+The latter's domain route is superseded; edit forward in a later implementation
+session. GCP resource inspection failed on certificate validation, so neither
+resource absence nor running/parked state has been verified. Resolve that read
+failure without disabling certificate verification before relying on GCP state.
 
-Install Terraform and authenticated `gcloud`, then run the initial apply from
-the repository root. This creates only Frankfurt infrastructure, identities,
-regional Secret Manager containers, Cloud SQL, Artifact Registry, and GitHub
-OIDC federation. It deliberately creates no Cloud Run revision yet.
+Before billable provisioning, record the actual resource inventory and current
+Frankfurt costs: request-based Cloud Run, zonal `db-f1-micro` Cloud SQL with
+10 GiB SSD, backups/PITR and IP allocation, plus secrets, artifacts, build and
+other retained resources. Verify actual settings rather than assuming defaults.
+Choose a preview spending limit, review interval and pause owner; the deferred
+usage-learning phase's clock and cash ledger must not be activated to do this.
+Cloud Run's free allowance is not a promise of free hosting. Exact Frankfurt
+prices remain unverified; do not use an unrelated region's quote.
+[Cloud Run pricing](https://cloud.google.com/run/pricing),
+[Cloud SQL pricing](https://cloud.google.com/sql/pricing).
 
-```console
-gcloud config set project YOUR_PRODUCTION_PROJECT_ID
-gcloud auth application-default set-quota-project YOUR_PRODUCTION_PROJECT_ID
-terraform -chdir=infra/terraform init
-terraform -chdir=infra/terraform apply \
-  -var project_id=YOUR_PRODUCTION_PROJECT_ID \
-  -var github_repository=LaverdeS/agent-data-oracle
-```
+## 2. Implement and test founder admission before deploying
 
-The Google Terraform provider uses Application Default Credentials (ADC). If
-the quota-project command reports that ADC does not exist yet, run
-`gcloud auth application-default login` with the same founder account, then
-repeat the quota-project command. A warning that the active project and ADC
-quota project differ is not a failed project switch; it is resolved by this
-step before Terraform runs.
+#21 provides both a founder-held `PREVIEW_ACCESS_SECRET` gate before mail
+admission and an explicit `PREVIEW_RECIPIENT_EMAILS` founder allowlist. An
+allowlist alone allows strangers who know a founder address to request mail to
+that address. `FOUNDER_EMAILS` assigns privileges separately; every preview
+recipient must also be present there.
 
-Record the `cloud_sql_connection_name`, `workload_identity_provider`, and
-`deployer_service_account` outputs. Create a least-privilege PostgreSQL login
-and database schema access for the application; never place its password in a
-Terraform variable or GitHub secret.
+Missing configuration must fail closed. Rejected requests retain the generic
+response and create no deliverable token, operator or delivery-cap reservation.
+Test magic-link redemption, existing sessions, removal from the allowlist and
+founder-owned API keys, including direct access that bypasses the UI. Keep email
+verification, founder TOTP, CSRF, secure cookies, expiry, ownership and scopes.
+Use a separate preview access mechanism without weakening ordinary authentication.
+All preview access secrets belong in regional Secret Manager, not URLs or logs.
 
-## 3. Populate Secret Manager directly
+Preserve the atomic 100-admitted-delivery rolling-24-hour cap, per-address/network
+limits and bounded retries. Verify that founder tests do not start a phase,
+emit validation events or consume real-batch/first-20-real-queue audit allowances.
+Keep immutable test evidence and diagnostic/security records; test isolation
+must not bypass audit, source freshness, integrity or pause safeguards.
 
-Use the Google Cloud console's Secret Manager page or `gcloud secrets versions
-add` to add the following values to the regional secret containers. Enter each
-secret directly; do not put a value in Git, Terraform state, an image, CI logs,
-or a frontend asset.
+## 3. Temporary Gmail authorization — human-operated
 
-| Secret suffix | Value |
-| --- | --- |
-| `database-url` | `postgresql+psycopg://…?host=/cloudsql/CONNECTION_NAME` |
-| `auth-secret` | A newly generated, stable secret of at least 24 bytes |
-| `founder-emails` | Comma-separated founder email addresses |
-| `gmail-oauth-client-id` | Consumer Gmail API OAuth web-client ID |
-| `gmail-oauth-client-secret` | Consumer Gmail API OAuth web-client secret |
-| `gmail-oauth-refresh-token` | Offline refresh token for only the founder-controlled sender |
+No domain purchase, public branding pages, Workspace subscription or production
+OAuth publication is a preview prerequisite. Use only the separate controlled
+consumer-Gmail sender, with its two-step verification and recovery checked.
 
-Use the production Google Cloud project for the sender authorization:
+The human configures the Google Auth Platform audience as **External**, leaves
+publishing status in **Testing**, adds only the sender as a test user and requests
+only `https://www.googleapis.com/auth/gmail.send`. Only the sender grants Google
+access; magic-link recipients do not. A temporary test OAuth client and the
+sender grant are human-operated; this checklist authorizes no automatic account
+or credential creation.
 
-1. Enable the [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com).
-2. Open [Google Auth Platform Branding](https://console.cloud.google.com/auth/branding).
-   Use **Agent Data Oracle** as the app name, a monitored founder address as
-   the support address, and current founder developer contacts. Do not upload
-   a logo for this bounded phase. Remove stale or additional entries so
-   **Authorized domains** contains exactly the verified branding domain, then
-   enter the exact public homepage, privacy-policy, and terms URLs. Confirm all
-   three URL hosts use that domain or its subdomains, load over HTTPS without
-   authentication, and are linked from the homepage. Save the draft, click
-   **Verify Branding**, fix any reported issue, and after the status becomes
-   **Ready to publish**, click **Publish branding** within seven days.
-3. Set the audience to **External** and add only the sensitive
-   `https://www.googleapis.com/auth/gmail.send` scope. It permits sending but
-   does not permit reading the mailbox.
-4. Set the publishing status to **In production** before issuing the final
-   refresh token. A token issued while the external app remains in **Testing**
-   expires after seven days. This sender-only personal-use configuration has
-   one authorizing Google user; recipients of sign-in links do not authorize
-   Google access. Recheck Google's current personal-use exemption and OAuth
-   user-cap rules at provisioning time. The sender will see an unverified-app
-   warning unless the app is verified.
-5. Create a **Web application** OAuth client with
-   `https://developers.google.com/oauthplayground` as an authorized redirect
-   URI. Keep its client ID and secret in the founder's password manager until
-   they are entered directly into Secret Manager.
-6. In the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/),
-   open settings, enable **Use your own OAuth credentials**, select offline
-   access and forced consent, and enter that web client's ID and secret.
-   Authorize only `gmail.send` while signed in as the chosen sender, exchange
-   the code, and copy the refresh token directly into the corresponding
-   regional Secret Manager secret version.
+A Gmail-scoped Testing refresh token expires after **seven days** and may fail
+earlier if revoked. Record the authorization date and human renewal owner, never
+the token. Reauthorize for subsequent founder smoke sessions as needed; do not
+call this durable or public-ready. If setup cannot proceed in Testing, record
+the actual blocker rather than substituting the old domain/production route.
+[Google token-expiration rules](https://developers.google.com/identity/protocols/oauth2#expiration),
+[Gmail scope reference](https://developers.google.com/workspace/gmail/api/auth/scopes).
 
-Keep the client secret and refresh token out of GitHub, shell history,
-`.provisioning.env`, screenshots, and issue comments. The running service reads
-them from Secret Manager. The application atomically admits no more than 100
-sign-in delivery requests per rolling 24 hours across all instances; the
-existing per-email and per-network limits remain in force. Exhaustion keeps the
-public response generic and creates no deliverable login token.
+Enter the client ID, client secret and refresh token directly into the regional
+Secret Manager containers alongside `database-url`, `auth-secret`,
+`founder-emails`, `preview-access-secret` and `preview-recipient-emails`. The
+deployed environment maps the last two to `PREVIEW_ACCESS_SECRET` and
+`PREVIEW_RECIPIENT_EMAILS`. Use the founder's password manager for necessary
+secure handling. Never place credentials in `.provisioning.env`,
+GitHub, shell history, screenshots, issues, logs, Terraform inputs/state or images.
+Gmail processing remains a documented non-Frankfurt exception.
 
-## 4. Bootstrap and connect GitHub delivery
+Ordinary local development and CI use the existing capture provider. Planned
+Cloud Run testing sessions use Gmail; repeat delivery/failure evidence after
+material authentication, provider or deployment changes. Hosted capture would
+need a separate safe implementation. Do not set Cloud Run `APP_ENV` to local/test
+to bypass Gmail because that also changes security behavior.
 
-Build and push the first digest-pinned image to the new regional repository
-using an authenticated founder session. Then create the Cloud Run service and
-one-shot migration job:
+## 4. Deploy only after the preview implementation is ready
 
-```console
-terraform -chdir=infra/terraform apply \
-  -var project_id=YOUR_PRODUCTION_PROJECT_ID \
-  -var github_repository=LaverdeS/agent-data-oracle \
-  -var create_application=true \
-  -var bootstrap_image=EUROPE-WEST3-docker.pkg.dev/PROJECT/agent-data-oracle/web@sha256:IMAGE_DIGEST
-```
+Retain regional Cloud Run/SQL/Artifact Registry/Secret Manager, zero minimum and
+at most two web instances, bounded SQL connections, distinct least-privilege
+identities and Google-authenticated encrypted SQL connectivity. Keep GitHub WIF
+and the existing manual deployment approval; existing project/environment names
+containing `production` do not authorize public use or require recreation.
 
-The first revision uses the harmless `https://bootstrap.invalid` origin solely
-to obtain the generated service URL; it must not be used by an operator. Copy
-that URL from the Terraform `service_url` output and apply the same command
-once more with `-var public_origin=https://GENERATED.run.app`. Only then can
-the sign-in shell issue canonical links. The service uses Cloud Run's generated
-`run.app` HTTPS hostname; do not attach the OAuth branding domain to the service
-and do not add a custom load balancer.
+Use a digest-pinned image, explicit migration-before-traffic, backward-compatible
+migrations and a known prior revision for recovery. Use the generated HTTPS
+`run.app` origin with tested canonical magic links. An obscure URL is not access
+control. A bootstrap revision must not permit sign-in before the correct origin
+and founder boundary are established.
 
-Add these non-secret GitHub Actions environment variables to `production`:
+The human performs interactive provisioning and handles secrets. This checklist
+is sufficient; the superseded 19-stage wizard was removed without reading or
+changing the ignored `.provisioning.env` that preserves completed Stages 1–3.
 
-| Variable | Value |
-| --- | --- |
-| `GCP_PROJECT_ID` | Founder-owned production project ID |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Terraform `workload_identity_provider` output |
-| `GCP_DEPLOYER_SERVICE_ACCOUNT` | Terraform `deployer_service_account` output |
+## 5. Record founder-only acceptance and cost posture
 
-The workflow uses GitHub OIDC Workload Identity Federation. It must never use
-a Google service-account key or a production secret.
+Record dated, redacted evidence in #21 for:
 
-## 5. Verify before any activation
+- `/live`, `/ready`, founder admission and rejection, secure browser/magic-link
+  completion, founder controls and relevant API admission checks.
+- Actual Gmail arrival at an approved founder inbox; generic responses alone do
+  not prove delivery.
+- A controlled invalid-refresh-token secret version/revision, a real attempted
+  provider call, generic failure response and redacted failure logs. Use a fresh
+  revision so a cached access token cannot conceal the invalid-token condition.
+- Immediate recovery to a known valid secret version/revision and successful
+  delivery. Never leave the deliberate failure revision serving.
+- No phase activation or validation-event/counter contamination from test data.
+- Actual running or parked SQL state, recurring cost estimate, preview budget
+  owner and restart procedure. A stopped instance cannot serve the application;
+  storage and IP charges continue. Account for retained backups and other
+  resources instead of treating parking as zero cost.
+  [Google SQL stopping behavior](https://docs.cloud.google.com/sql/docs/postgres/start-stop-restart-instance#stop_an_instance).
 
-After founder approval, run `.github/workflows/deploy.yml` manually with an
-immutable image tag. It updates the migration job, waits for Alembic to finish,
-and only then moves the web service to that image. Every migration must remain
-compatible with the immediately preceding web revision.
-
-Run the repeatable smoke check against the generated HTTPS service URL:
+Load the allowlisted founder inbox and preview secret without placing either in
+shell history, export them for the smoke process, then run:
 
 ```console
 scripts/smoke-deployed-shell.sh https://SERVICE.run.app
 ```
 
-It checks `/live`, `/ready`, the public sign-in shell, CSRF handling, and the
-generic `202` response. Send a sign-in request to a founder-controlled test
-inbox and complete the link flow; then, during a scheduled non-public test
-window, temporarily use an invalid Gmail OAuth refresh-token secret version
-and create a new Cloud Run revision pinned to that exact version:
+The revised script submits one rejected request without the founder gate and one
+admitted request with it, while keeping the secret off the curl command line. Its
+generic responses still do not prove delivery: confirm exactly one new message
+arrived, complete that link, and perform the separately documented provider
+failure/recovery drill. Unset the smoke variables after the session.
 
-```console
-gcloud run services update agent-data-oracle --region=europe-west3 \
-  --update-secrets=GMAIL_OAUTH_REFRESH_TOKEN=agent-data-oracle-gmail-oauth-refresh-token:INVALID_VERSION
-scripts/smoke-deployed-shell.sh https://SERVICE.run.app
-gcloud logging read 'resource.type="cloud_run_revision" AND jsonPayload.event="sign_in_delivery_failed"' --limit=1
-```
+Keep #21 open and do not push until the newly approved evidence is complete.
+This implementation performs no deployment, OAuth grant or closure.
 
-The smoke response must remain generic and the redacted failure event must
-contain neither a sign-in token nor product data. Add a new valid refresh-token
-secret version and update the service to `:latest` to create the recovery
-revision immediately. Do not leave the deliberate failure revision serving.
+## 6. Continue product development; defer publication
 
-Do not activate the usage-learning phase until the later readiness ticket has
-recorded every required source, privacy, security, deletion, backup, restore,
-cost, pause, and alert gate.
+#22 source refresh no longer waits for deployment. #29 evidence refresh and #31
+core privacy can progress without #30 activation. #30 and #32–#35 remain deferred
+public/usage-learning work; their full production certification is not a preview
+or ordinary feature-development gate.
+
+After the preview is usable, [#37](https://github.com/LaverdeS/agent-data-oracle/issues/37)
+asks the founder to run a grilling session about intelligence features, product
+fit, expectations and technology alternatives, then generate aligned specs and
+tickets. No intelligence spec or stack is chosen now.
+
+Future publication needs a fresh founder decision, current hosting/domain and
+durable-sender research, public security/privacy/operational evidence and separate
+activation authorization. Neither a completed preview nor feature development
+starts that phase. See [#17](https://github.com/LaverdeS/agent-data-oracle/issues/17)
+for scope and [#35](https://github.com/LaverdeS/agent-data-oracle/issues/35) for the
+deferred public decision.

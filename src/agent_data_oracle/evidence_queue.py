@@ -465,10 +465,15 @@ class EvidenceQueues:
     """Create and retrieve the authoritative immutable evidence contract."""
 
     def __init__(
-        self, database: Database, *, clock: Callable[[], datetime] = utc_now
+        self,
+        database: Database,
+        *,
+        clock: Callable[[], datetime] = utc_now,
+        counts_toward_audit_gate: bool = True,
     ) -> None:
         self._database = database
         self._clock = clock
+        self._counts_toward_audit_gate = counts_toward_audit_gate
 
     async def submit_evaluation(
         self,
@@ -567,13 +572,26 @@ class EvidenceQueues:
                         candidate_rows.append(
                             (input_position, source_record, match_bases)
                         )
-            queue_number = await connection.scalar(
-                text(
-                    "UPDATE audit_gate_state "
-                    "SET committed_queue_count = committed_queue_count + 1 "
-                    "WHERE singleton = true RETURNING committed_queue_count"
+            if self._counts_toward_audit_gate:
+                queue_number = await connection.scalar(
+                    text(
+                        "UPDATE audit_gate_state "
+                        "SET committed_queue_count = committed_queue_count + 1 "
+                        "WHERE singleton = true RETURNING committed_queue_count"
+                    )
                 )
-            )
+            else:
+                committed_queue_count = await connection.scalar(
+                    text(
+                        "SELECT committed_queue_count FROM audit_gate_state "
+                        "WHERE singleton = true FOR UPDATE"
+                    )
+                )
+                queue_number = (
+                    committed_queue_count + 1
+                    if isinstance(committed_queue_count, int)
+                    else None
+                )
             if not isinstance(queue_number, int):
                 raise RuntimeError("founder audit gate is unavailable")
             is_held_for_audit = (

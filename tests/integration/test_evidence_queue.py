@@ -95,12 +95,19 @@ def import_completed_fixture(postgres_url: str) -> None:
 
 
 async def sign_in_and_declare(
-    client: AsyncClient, email_provider: LocalCaptureEmailProvider, email: str
+    client: AsyncClient,
+    email_provider: LocalCaptureEmailProvider,
+    email: str,
+    *,
+    preview_access_secret: str | None = None,
 ) -> None:
     sign_in = await client.get("/sign-in")
+    form_data = {"email": email, "csrf_token": sign_in.cookies["ado_csrf"]}
+    if preview_access_secret is not None:
+        form_data["preview_access_secret"] = preview_access_secret
     await client.post(
         "/auth/sign-in",
-        data={"email": email, "csrf_token": sign_in.cookies["ado_csrf"]},
+        data=form_data,
     )
     token = parse_qs(urlparse(email_provider.deliveries[-1].sign_in_url).query)[
         "token"
@@ -128,6 +135,91 @@ def totp_code(secret: str, instant: datetime) -> str:
     offset = digest[-1] & 0x0F
     value = struct.unpack(">I", digest[offset : offset + 4])[0] & 0x7FFFFFFF
     return f"{value % 1_000_000:06d}"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_founder_preview_queues_do_not_consume_real_queue_audit_allowance(
+    postgres_url: str, evidence_database: AsyncEngine
+) -> None:
+    import_completed_fixture(postgres_url)
+    email_provider = LocalCaptureEmailProvider()
+    shared_arguments = {
+        "database_url": postgres_url,
+        "auth_secret": b"test-secret-that-is-long-enough",
+        "email_provider": email_provider,
+        "clock": lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        "public_origin": "https://test",
+        "secure_cookies": True,
+        "founder_emails": frozenset({"founder@example.com"}),
+    }
+    preview_app = create_app(
+        **shared_arguments,
+        preview_access_secret="founder-held-preview-secret",
+        preview_recipient_emails=frozenset({"founder@example.com"}),
+    )
+
+    async with (
+        preview_app.router.lifespan_context(preview_app),
+        AsyncClient(
+            transport=ASGITransport(app=preview_app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as founder,
+    ):
+        await sign_in_and_declare(
+            founder,
+            email_provider,
+            "founder@example.com",
+            preview_access_secret="founder-held-preview-secret",
+        )
+        for _ in range(20):
+            form = await founder.get("/queues/new")
+            submitted = await founder.post(
+                "/queues",
+                content=urlencode(
+                    [
+                        ("identifier_type", "upc"),
+                        ("identifier_value", "999999999999"),
+                        ("authorization", "authorized"),
+                        ("idempotency_key", form.headers["x-idempotency-key"]),
+                        ("csrf_token", form.cookies["ado_csrf"]),
+                    ]
+                ),
+                headers={"content-type": "application/x-www-form-urlencoded"},
+            )
+            assert submitted.status_code == 303
+        session_token = founder.cookies["ado_session"]
+
+    later_app = create_app(**shared_arguments)
+    async with (
+        later_app.router.lifespan_context(later_app),
+        AsyncClient(
+            transport=ASGITransport(app=later_app),
+            base_url="https://test",
+            follow_redirects=False,
+            cookies={"ado_session": session_token},
+        ) as operator,
+    ):
+        form = await operator.get("/queues/new")
+        submitted = await operator.post(
+            "/queues",
+            content=urlencode(
+                [
+                    ("identifier_type", "model"),
+                    ("identifier_value", "HANS0002"),
+                    ("authorization", "authorized"),
+                    ("idempotency_key", form.headers["x-idempotency-key"]),
+                    ("csrf_token", form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+        queue = await operator.get(submitted.headers["location"])
+
+    assert submitted.status_code == 303
+    assert queue.status_code == 200
+    assert "Founder review pending" in queue.text
 
 
 @pytest.mark.asyncio

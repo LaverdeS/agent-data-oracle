@@ -9,6 +9,10 @@
   </p>
   <form method="post" action="/auth/sign-in">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if preview_access_enabled %}
+    <label for="preview_access_secret">Founder preview access code</label>
+    <input id="preview_access_secret" name="preview_access_secret" type="password" required autocomplete="off">
+    {% endif %}
     <label for="email">Work email</label>
     <input id="email" name="email" type="email" autocomplete="email" required>
     <button type="submit">Email my secure link</button>

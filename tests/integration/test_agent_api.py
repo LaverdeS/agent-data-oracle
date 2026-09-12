@@ -60,13 +60,15 @@ async def evidence_database(postgres_url: str) -> AsyncEngine:
 
 
 async def sign_in_and_declare(
-    client: AsyncClient, email: LocalCaptureEmailProvider
+    client: AsyncClient,
+    email: LocalCaptureEmailProvider,
+    operator_email: str = "operator@example.com",
 ) -> None:
     sign_in = await client.get("/sign-in")
     await client.post(
         "/auth/sign-in",
         data={
-            "email": "operator@example.com",
+            "email": operator_email,
             "csrf_token": sign_in.cookies["ado_csrf"],
         },
     )
@@ -84,6 +86,69 @@ async def sign_in_and_declare(
             "csrf_token": declaration.cookies["ado_csrf"],
         },
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_preview_rejects_founder_agent_key_after_owner_leaves_allowlist(
+    postgres_url: str, evidence_database: AsyncEngine
+) -> None:
+    del evidence_database
+    email = LocalCaptureEmailProvider()
+    shared_arguments = {
+        "database_url": postgres_url,
+        "auth_secret": b"test-secret-that-is-long-enough",
+        "email_provider": email,
+        "clock": lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        "public_origin": "https://test",
+        "secure_cookies": True,
+        "founder_emails": frozenset(
+            {"founder@example.com", "replacement-founder@example.com"}
+        ),
+    }
+    unrestricted_app = create_app(**shared_arguments)
+
+    async with (
+        unrestricted_app.router.lifespan_context(unrestricted_app),
+        AsyncClient(
+            transport=ASGITransport(app=unrestricted_app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as client,
+    ):
+        await sign_in_and_declare(client, email, "founder@example.com")
+        keys_page = await client.get("/agent-keys")
+        created_key = await client.post(
+            "/agent-keys",
+            data={
+                "scopes": ["queues:read"],
+                "csrf_token": keys_page.cookies["ado_csrf"],
+            },
+        )
+        secret_match = re.search(
+            r'<code id="agent-key-secret">([^<]+)</code>', created_key.text
+        )
+        assert secret_match is not None
+        secret = secret_match.group(1)
+
+    preview_app = create_app(
+        **shared_arguments,
+        preview_access_secret="founder-held-preview-secret",
+        preview_recipient_emails=frozenset({"replacement-founder@example.com"}),
+    )
+    async with (
+        preview_app.router.lifespan_context(preview_app),
+        AsyncClient(
+            transport=ASGITransport(app=preview_app), base_url="https://test"
+        ) as client,
+    ):
+        rejected = await client.get(
+            "/api/v1/queues/00000000-0000-0000-0000-000000000000",
+            headers={"Authorization": f"Bearer {secret}"},
+        )
+
+    assert rejected.status_code == 401
+    assert rejected.json()["code"] == "authentication_required"
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
+  {% if founder_preview %}
+  <p class="quiet">Founder-only development preview</p>
+  {% else %}
   <p class="quiet">A bounded usage-learning phase</p>
+  {% endif %}
   <h1>CPSC evidence, not a safety verdict</h1>
   <p class="lede">
     Compare identifiers you are authorized to review with official U.S. CPSC
@@ -27,8 +31,13 @@
     <article class="card">
       <h2>No payment</h2>
       <p>
+        {% if founder_preview %}
+        No payment is accepted. This founder-only preview is not validation
+        evidence, and the usage-learning phase is not active.
+        {% else %}
         No payment is accepted during this usage-learning phase. Free activity
         does not establish willingness to pay, product-market fit, or a data moat.
+        {% endif %}
       </p>
     </article>
   </section>

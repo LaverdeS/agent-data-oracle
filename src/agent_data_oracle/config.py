@@ -32,6 +32,28 @@ def founder_emails_from_environment() -> frozenset[str]:
     )
 
 
+def preview_access_from_environment() -> tuple[str | None, frozenset[str] | None]:
+    environment = os.environ.get("APP_ENV", "local").casefold()
+    secret = os.environ.get("PREVIEW_ACCESS_SECRET")
+    configured_recipients = os.environ.get("PREVIEW_RECIPIENT_EMAILS")
+    if (
+        environment in {"local", "test"}
+        and secret is None
+        and configured_recipients is None
+    ):
+        return None, None
+    recipients = frozenset(
+        value.strip().casefold()
+        for value in (configured_recipients or "").split(",")
+        if value.strip()
+    )
+    if not secret or not recipients:
+        raise RuntimeError(
+            "PREVIEW_ACCESS_SECRET and PREVIEW_RECIPIENT_EMAILS are required"
+        )
+    return secret, recipients
+
+
 def validated_public_origin(value: str, *, require_https: bool) -> str:
     origin = value.rstrip("/")
     parsed = urlsplit(origin)

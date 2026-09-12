@@ -111,6 +111,222 @@ async def test_sign_in_request_is_generic_and_delivers_a_single_use_link(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+async def test_preview_sign_in_requires_gate_and_founder_recipient_allowlist(
+    postgres_url: str, access_database: None
+) -> None:
+    del access_database
+    email = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email,
+        clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
+        secure_cookies=True,
+        founder_emails=frozenset({"founder@example.com"}),
+        preview_access_secret="founder-held-preview-secret",
+        preview_recipient_emails=frozenset({"founder@example.com"}),
+    )
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app), base_url="https://test"
+        ) as client,
+    ):
+        form = await client.get("/sign-in")
+        assert 'name="preview_access_secret"' in form.text
+
+        for submitted in (
+            {"email": "founder@example.com"},
+            {
+                "email": "founder@example.com",
+                "preview_access_secret": "wrong-secret",
+            },
+            {
+                "email": "visitor@example.com",
+                "preview_access_secret": "founder-held-preview-secret",
+            },
+        ):
+            sign_in = await client.get("/sign-in")
+            response = await client.post(
+                "/auth/sign-in",
+                data={**submitted, "csrf_token": sign_in.cookies["ado_csrf"]},
+            )
+            assert response.status_code == 202
+            assert "If the address can receive sign-in email" in response.text
+
+        admitted_form = await client.get("/sign-in")
+        admitted = await client.post(
+            "/auth/sign-in",
+            data={
+                "email": "founder@example.com",
+                "preview_access_secret": "founder-held-preview-secret",
+                "csrf_token": admitted_form.cookies["ado_csrf"],
+            },
+        )
+
+    async with app.state.database.connection() as connection:
+        token_count = await connection.scalar(text("SELECT count(*) FROM login_tokens"))
+        admission_count = await connection.scalar(
+            text("SELECT count(*) FROM sign_in_delivery_admissions")
+        )
+        operator_count = await connection.scalar(text("SELECT count(*) FROM operators"))
+
+    assert admitted.status_code == 202
+    assert len(email.deliveries) == 1
+    assert email.deliveries[0].recipient == "founder@example.com"
+    assert token_count == 1
+    assert admission_count == 1
+    assert operator_count == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_preview_allowlist_is_rechecked_when_magic_link_is_redeemed(
+    postgres_url: str, access_database: None
+) -> None:
+    del access_database
+    email = LocalCaptureEmailProvider()
+    shared_arguments = {
+        "database_url": postgres_url,
+        "auth_secret": b"test-secret-that-is-long-enough",
+        "email_provider": email,
+        "clock": lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        "public_origin": "https://test",
+        "secure_cookies": True,
+        "founder_emails": frozenset(
+            {"founder@example.com", "replacement-founder@example.com"}
+        ),
+        "preview_access_secret": "founder-held-preview-secret",
+    }
+    issuing_app = create_app(
+        **shared_arguments,
+        preview_recipient_emails=frozenset({"founder@example.com"}),
+    )
+
+    async with (
+        issuing_app.router.lifespan_context(issuing_app),
+        AsyncClient(
+            transport=ASGITransport(app=issuing_app), base_url="https://test"
+        ) as client,
+    ):
+        sign_in = await client.get("/sign-in")
+        await client.post(
+            "/auth/sign-in",
+            data={
+                "email": "founder@example.com",
+                "preview_access_secret": "founder-held-preview-secret",
+                "csrf_token": sign_in.cookies["ado_csrf"],
+            },
+        )
+        token = parse_qs(urlparse(email.deliveries[0].sign_in_url).query)["token"][0]
+
+    restricted_app = create_app(
+        **shared_arguments,
+        preview_recipient_emails=frozenset({"replacement-founder@example.com"}),
+    )
+    async with (
+        restricted_app.router.lifespan_context(restricted_app),
+        AsyncClient(
+            transport=ASGITransport(app=restricted_app), base_url="https://test"
+        ) as client,
+    ):
+        confirmation = await client.get(f"/auth/verify?token={token}")
+        rejected = await client.post(
+            "/auth/verify",
+            data={
+                "token": token,
+                "csrf_token": confirmation.cookies["ado_csrf"],
+            },
+        )
+
+    async with restricted_app.state.database.connection() as connection:
+        operator_count = await connection.scalar(text("SELECT count(*) FROM operators"))
+        session_count = await connection.scalar(
+            text("SELECT count(*) FROM browser_sessions")
+        )
+
+    assert rejected.status_code == 400
+    assert "expired or has already been used" in rejected.text
+    assert operator_count == 0
+    assert session_count == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_preview_allowlist_is_rechecked_for_existing_browser_session(
+    postgres_url: str, access_database: None
+) -> None:
+    del access_database
+    email = LocalCaptureEmailProvider()
+    shared_arguments = {
+        "database_url": postgres_url,
+        "auth_secret": b"test-secret-that-is-long-enough",
+        "email_provider": email,
+        "clock": lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        "public_origin": "https://test",
+        "secure_cookies": True,
+        "founder_emails": frozenset(
+            {"founder@example.com", "replacement-founder@example.com"}
+        ),
+        "preview_access_secret": "founder-held-preview-secret",
+    }
+    admitted_app = create_app(
+        **shared_arguments,
+        preview_recipient_emails=frozenset({"founder@example.com"}),
+    )
+
+    async with (
+        admitted_app.router.lifespan_context(admitted_app),
+        AsyncClient(
+            transport=ASGITransport(app=admitted_app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as client,
+    ):
+        sign_in = await client.get("/sign-in")
+        await client.post(
+            "/auth/sign-in",
+            data={
+                "email": "founder@example.com",
+                "preview_access_secret": "founder-held-preview-secret",
+                "csrf_token": sign_in.cookies["ado_csrf"],
+            },
+        )
+        token = parse_qs(urlparse(email.deliveries[0].sign_in_url).query)["token"][0]
+        confirmation = await client.get(f"/auth/verify?token={token}")
+        await client.post(
+            "/auth/verify",
+            data={
+                "token": token,
+                "csrf_token": confirmation.cookies["ado_csrf"],
+            },
+        )
+        await record_test_declaration(client)
+        session_token = client.cookies["ado_session"]
+
+    restricted_app = create_app(
+        **shared_arguments,
+        preview_recipient_emails=frozenset({"replacement-founder@example.com"}),
+    )
+    async with (
+        restricted_app.router.lifespan_context(restricted_app),
+        AsyncClient(
+            transport=ASGITransport(app=restricted_app),
+            base_url="https://test",
+            follow_redirects=False,
+            cookies={"ado_session": session_token},
+        ) as client,
+    ):
+        rejected = await client.get("/app")
+
+    assert rejected.status_code == 303
+    assert rejected.headers["location"] == "/sign-in"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_single_use_link_creates_session_and_records_operator_declaration(
     postgres_url: str, access_database: None
 ) -> None:
