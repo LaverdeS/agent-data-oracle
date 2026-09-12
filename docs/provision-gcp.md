@@ -1,12 +1,29 @@
-# Founder-only Cloud Run preview checklist
+# Deferred GCP provisioning reference
 
-**Founder-approved plan, 2026-09-11. Implementation and deployment evidence are
-pending in [#21](https://github.com/LaverdeS/agent-data-oracle/issues/21).**
-This preview is for founder testing before continued product development. It
-admits no public operators and collects no usage-learning validation traffic.
+**Superseded as the active plan on 2026-09-12.** Founder testing now runs
+locally without paid hosted infrastructure. Ticket
+[#21](https://github.com/LaverdeS/agent-data-oracle/issues/21) completed the
+application-level founder preview boundary without claiming deployment
+evidence; [#38](https://github.com/LaverdeS/agent-data-oracle/issues/38) owns the
+repeatable local end-to-end product harness.
+
+Do not execute this checklist or provision GCP from it. It is retained only as
+historical design input for a future hosting comparison. Ticket
+[#35](https://github.com/LaverdeS/agent-data-oracle/issues/35) must first use
+current primary-source research and founder grilling to compare credible
+hosting, database, email, secrets, telemetry, scheduling, backup, and TLS
+options. GCP receives no preference merely because Terraform exists.
+
+The notes below describe the superseded 2026-09-11 Cloud Run proposal. They are
+not current acceptance criteria, authorization, or evidence that resources
+exist.
+
+This preview was intended for founder testing before continued product
+development. It admitted no public operators and collected no usage-learning
+validation traffic.
 The superseded `scripts/provision-gcp.sh` paid-domain wizard has been retired:
 **do not retrieve an older revision and resume Stage 4 or its production-OAuth
-steps**. This document is the current human-operated checklist.
+steps**. The remaining sections preserve that historical checklist.
 
 ## 1. Preserve completed work and verify the foundation
 
@@ -92,7 +109,7 @@ material authentication, provider or deployment changes. Hosted capture would
 need a separate safe implementation. Do not set Cloud Run `APP_ENV` to local/test
 to bypass Gmail because that also changes security behavior.
 
-## 4. Deploy only after the preview implementation is ready
+## 4. Historical deployment step
 
 Retain regional Cloud Run/SQL/Artifact Registry/Secret Manager, zero minimum and
 at most two web instances, bounded SQL connections, distinct least-privilege
@@ -110,7 +127,7 @@ The human performs interactive provisioning and handles secrets. This checklist
 is sufficient; the superseded 19-stage wizard was removed without reading or
 changing the ignored `.provisioning.env` that preserves completed Stages 1–3.
 
-## 5. Record founder-only acceptance and cost posture
+## 5. Historical hosted-acceptance step
 
 Record dated, redacted evidence in #21 for:
 
@@ -143,17 +160,18 @@ generic responses still do not prove delivery: confirm exactly one new message
 arrived, complete that link, and perform the separately documented provider
 failure/recovery drill. Unset the smoke variables after the session.
 
-Keep #21 open and do not push until the newly approved evidence is complete.
-This implementation performs no deployment, OAuth grant or closure.
+This deployed evidence was deliberately not collected. Local implementation
+evidence closed #21 under the superseding 2026-09-12 decision; any future
+provider acceptance belongs to tickets rewritten after #35 selects a posture.
 
 ## 6. Continue product development; defer publication
 
-#22 source refresh no longer waits for deployment. #29 evidence refresh and #31
-core privacy can progress without #30 activation. #30 and #32–#35 remain deferred
-public/usage-learning work; their full production certification is not a preview
-or ordinary feature-development gate.
+#38 establishes the local product harness. #22 source refresh, #29 evidence
+refresh, and #31 core privacy then progress without #30 activation or a hosted
+environment. #30 and #32–#35 remain deferred public/usage-learning work; their
+full production certification is not an ordinary feature-development gate.
 
-After the preview is usable, [#37](https://github.com/LaverdeS/agent-data-oracle/issues/37)
+After the local product path is usable, [#37](https://github.com/LaverdeS/agent-data-oracle/issues/37)
 asks the founder to run a grilling session about intelligence features, product
 fit, expectations and technology alternatives, then generate aligned specs and
 tickets. No intelligence spec or stack is chosen now.

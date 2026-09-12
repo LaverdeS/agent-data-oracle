@@ -78,17 +78,17 @@ curl http://127.0.0.1:8080/ready
 
 Local mode uses an in-memory email capture provider and non-secure localhost
 cookies. Tests inject that provider to follow passwordless links without ever
-printing token values. A deployed environment must set `APP_ENV=production`, a
-stable `AUTH_SECRET` of at least 24 bytes, canonical HTTPS `PUBLIC_ORIGIN`, one
-or more comma-separated `FOUNDER_EMAILS`, and Secret Manager-supplied
-`GMAIL_OAUTH_CLIENT_ID`, `GMAIL_OAUTH_CLIENT_SECRET`, and
-`GMAIL_OAUTH_REFRESH_TOKEN` values. The founder-only preview additionally
-requires a high-entropy `PREVIEW_ACCESS_SECRET` and comma-separated
-`PREVIEW_RECIPIENT_EMAILS`; every preview recipient must also be present in
-`FOUNDER_EMAILS`. Missing or empty preview configuration fails startup closed.
-Production
-sessions are `Secure`, HTTP-only, same-site cookies; sign-in links expire after
-15 minutes and sessions after 12 hours.
+printing token values. A standalone browser cannot yet inspect the captured
+inbox; [#38](https://github.com/LaverdeS/agent-data-oracle/issues/38) owns the
+repeatable local-preview and browser-test harness.
+
+Deployment remains deferred. The existing production configuration fails
+closed unless it receives a stable `AUTH_SECRET`, canonical HTTPS
+`PUBLIC_ORIGIN`, founder identities, preview gate and recipient allowlist, and
+real email-provider credentials. These settings document implemented security
+boundaries; they do not imply that a provider has been selected or a hosted
+environment exists. Sign-in links expire after 15 minutes and sessions after
+12 hours.
 
 The local default database URL targets the Compose service. Set
 `DATABASE_URL` to a SQLAlchemy `postgresql+psycopg://` URL in other
@@ -122,24 +122,21 @@ contains revision metadata and counts, not source payloads.
 For a reproducible local evidence-queue walkthrough after importing the
 fixture, see [View a local evidence queue](docs/local-evidence-queue-demo.md).
 
-## Founder-only preview provisioning
+## Local-first development posture
 
-The founder-led Frankfurt preview is intentionally confirmation-gated and does
-not activate the usage-learning phase. Follow
-[the founder-only preview checklist](docs/provision-gcp.md) directly. The
-superseded domain/production-OAuth wizard has been removed; do not retrieve an
-older revision and resume it. Preserve the ignored `.provisioning.env` because
-it records non-secret progress from the already completed foundation stages,
-but never print or commit it.
+The project currently incurs no hosted application-infrastructure cost and has
+no public environment. Founder testing uses localhost, PostgreSQL in Docker,
+recorded source fixtures, and the same application image intended for a future
+deployment. This work is product development, not public validation or an
+active usage-learning phase.
 
-Enter runtime secrets directly into regional Secret Manager. The preview uses
-temporary External/Testing consumer-Gmail authorization, accepts its seven-day
-refresh-token expiry, and requires no Workspace subscription, purchased domain,
-public branding pages or starting the usage-learning phase. The application
-remains on its generated `run.app` origin behind the founder-held preview gate
-and founder recipient allowlist. The checklist also covers the explicit
-running/parked Cloud SQL posture; a parked database keeps its data but makes
-the preview unavailable while storage and IP charges may continue.
+Cloud Run, Cloud SQL, Gmail OAuth, managed secrets, hosted telemetry, and a
+public domain are not current prerequisites. Their existing definitions are
+dormant reference material rather than a selected deployment plan. See the
+[deferred hosting note](docs/provision-gcp.md) and specification
+[#17](https://github.com/LaverdeS/agent-data-oracle/issues/17). Any future
+hosting decision starts with current option research and founder approval; it
+must not inherit GCP merely because configuration already exists.
 
 ## Quality gates
 
@@ -161,8 +158,8 @@ for secrets.
 
 ## Container roles
 
-The image starts the web process by default and accepts the same command
-overrides used for Cloud Run Jobs:
+The image starts the web process by default and accepts command overrides for
+migrations and short-lived jobs:
 
 ```console
 docker run --rm -p 8080:8080 \
