@@ -4,7 +4,7 @@ The local founder preview is a repeatable product-development harness. It does
 not publish the application, activate the usage-learning phase, send email, or
 create hosting evidence.
 
-## Run it
+## Run the automated preview
 
 Prerequisites are Python and Docker with Compose. From the repository root:
 
@@ -23,9 +23,25 @@ The command resets only the Compose project named
 6. runs a pinned Chromium journey in the Playwright development image on an
    internal-only Compose network.
 
-The app and database remain available after a passing run so the founder can
-inspect <http://127.0.0.1:18080>. Remove only the harness-owned containers,
-network, and ephemeral data with:
+Success ends with:
+
+```text
+Founder browser and delegated-agent journeys passed.
+Local preview journeys passed.
+```
+
+This is the current complete product test. It drives Chromium against the real
+application rather than only exercising unit or API stubs. In Docker Desktop,
+expect `app` and `postgres` to be healthy, and `migrate` and `fixture` to have
+exited with code 0. The one-off `journeys` container is removed automatically.
+
+Do not currently use <http://127.0.0.1:18080> as a manual test path. Docker
+Desktop does not activate the host port for this internal-only network, and the
+founder access code is intentionally available only to the harness browser.
+A follow-up ticket is required before a human can interact with the full flow
+from a host browser without weakening those protections.
+
+Remove only the harness-owned containers, network, and ephemeral data with:
 
 ```console
 python scripts/local_preview.py down
@@ -33,6 +49,23 @@ python scripts/local_preview.py down
 
 The existing developer database in `compose.yaml` is a different service,
 project, port, and data volume. Neither preview command removes it.
+
+## Images and cleanup
+
+The run creates two different images:
+
+- `agent-data-oracle:local-preview` is the production application image.
+- `agent-data-oracle-preview-journeys:latest` is the larger Playwright and
+  Chromium image used only to run the browser journey.
+
+Images do not run; containers do. Keep both images to make the next run faster.
+After `python scripts/local_preview.py down`, either image can be removed to
+reclaim disk space and will be rebuilt on the next run:
+
+```console
+docker image rm agent-data-oracle-preview-journeys:latest
+docker image rm agent-data-oracle:local-preview
+```
 
 ## Decision checkpoint
 
