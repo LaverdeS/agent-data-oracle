@@ -122,26 +122,24 @@ contains revision metadata and counts, not source payloads.
 For a reproducible local evidence-queue walkthrough after importing the
 fixture, see [View a local evidence queue](docs/local-evidence-queue-demo.md).
 
-## Production provisioning
+## Founder-only preview provisioning
 
-The founder-led Frankfurt deployment is intentionally confirmation-gated and
-does not activate the usage-learning phase. Review
-[the provisioning checklist](docs/provision-gcp.md), then run the interactive
-wizard from Git Bash or another Bash-compatible terminal:
+The founder-led Frankfurt preview is intentionally confirmation-gated and does
+not activate the usage-learning phase. Follow
+[the founder-only preview checklist](docs/provision-gcp.md) directly. The
+superseded domain/production-OAuth wizard has been removed; do not retrieve an
+older revision and resume it. Preserve the ignored `.provisioning.env` because
+it records non-secret progress from the already completed foundation stages,
+but never print or commit it.
 
-```console
-bash scripts/provision-gcp.sh
-```
-
-The wizard stores only non-secret progress values in ignored
-`.provisioning.env`; enter production secrets directly into Secret Manager. It
-includes an explicit Cloud SQL “park or go live” step: a parked database keeps
-its data but makes the deployed application unavailable to users. The bounded
-phase may use a founder-controlled consumer Gmail sender without a Workspace
-subscription; the wizard records whether a separate free sender or the
-founder's existing account was chosen. Durable OAuth also requires one
-founder-controlled domain for public branding pages, but the application stays
-on `run.app`. The wizard keeps all OAuth secrets out of the progress file.
+Enter runtime secrets directly into regional Secret Manager. The preview uses
+temporary External/Testing consumer-Gmail authorization, accepts its seven-day
+refresh-token expiry, and requires no Workspace subscription, purchased domain,
+public branding pages or usage-learning activation. The application remains on
+its generated `run.app` origin behind the founder-held preview gate and founder
+recipient allowlist. The checklist also covers the explicit running/parked
+Cloud SQL posture; a parked database keeps its data but makes the preview
+unavailable while storage and IP charges may continue.
 
 ## Quality gates
 

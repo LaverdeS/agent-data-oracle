@@ -18,6 +18,7 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from agent_data_oracle.auth import LocalCaptureEmailProvider
+from agent_data_oracle.preview_access import PreviewAccess
 from agent_data_oracle.web import create_app
 
 
@@ -139,7 +140,7 @@ def totp_code(secret: str, instant: datetime) -> str:
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_founder_preview_queues_do_not_consume_real_queue_audit_allowance(
+async def test_founder_preview_does_not_consume_usage_learning_audit_allowance(
     postgres_url: str, evidence_database: AsyncEngine
 ) -> None:
     import_completed_fixture(postgres_url)
@@ -155,8 +156,11 @@ async def test_founder_preview_queues_do_not_consume_real_queue_audit_allowance(
     }
     preview_app = create_app(
         **shared_arguments,
-        preview_access_secret="founder-held-preview-secret",
-        preview_recipient_emails=frozenset({"founder@example.com"}),
+        preview_access=PreviewAccess.founder_only(
+            access_secret="founder-held-preview-secret",
+            recipient_emails=frozenset({"founder@example.com"}),
+            founder_emails=frozenset({"founder@example.com"}),
+        ),
     )
 
     async with (

@@ -281,7 +281,7 @@ class HumanAccess:
         email_subject = normalized or "invalid"
         email_hash = self._digest("rate-email", email_subject)
         network_hash = self._digest("rate-network", network_identity)
-        allowed = False
+        delivery_is_admitted = False
         token: str | None = None
 
         async with self._database.transaction() as connection:
@@ -345,7 +345,7 @@ class HumanAccess:
                     "network_hash": network_hash,
                 },
             )
-            allowed = (
+            delivery_is_admitted = (
                 normalized is not None
                 and self._preview_access.admits_sign_in(
                     email=normalized, access_secret=preview_access_secret
@@ -354,7 +354,7 @@ class HumanAccess:
                 and count_by_kind.get("network", 0) < 20
                 and int(global_delivery_count or 0) < SIGN_IN_DELIVERY_LIMIT
             )
-            if allowed:
+            if delivery_is_admitted:
                 token = secrets.token_urlsafe(32)
                 await connection.execute(
                     text(
@@ -379,7 +379,7 @@ class HumanAccess:
                     },
                 )
 
-        if allowed and token is not None and normalized is not None:
+        if delivery_is_admitted and token is not None and normalized is not None:
             try:
                 await self._email_provider.send_sign_in_link(
                     recipient=normalized,

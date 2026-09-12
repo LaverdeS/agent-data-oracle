@@ -1,6 +1,11 @@
 import hashlib
 import hmac
+from collections.abc import Iterable
 from dataclasses import dataclass
+
+
+def normalized_email_set(emails: Iterable[str]) -> frozenset[str]:
+    return frozenset(email.strip().casefold() for email in emails if email.strip())
 
 
 @dataclass(frozen=True)
@@ -22,9 +27,7 @@ class PreviewAccess:
         recipient_emails: frozenset[str],
         founder_emails: frozenset[str],
     ) -> "PreviewAccess":
-        normalized_recipients = frozenset(
-            email.strip().casefold() for email in recipient_emails if email.strip()
-        )
+        normalized_recipients = normalized_email_set(recipient_emails)
         if len(access_secret.encode("utf-8")) < 24:
             raise ValueError("preview access secret must contain at least 24 bytes")
         if not normalized_recipients:

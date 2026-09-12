@@ -68,10 +68,14 @@ jobs:
         run: |
           gcloud run services update "$SERVICE" \
             --project "$PROJECT_ID" --region "$REGION" --image "$IMAGE" --quiet
-      - name: Verify the deployed public shell and health endpoints
+      - name: Verify the deployed health endpoints
         env:
           PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
         run: |
           service_url="$(gcloud run services describe "$SERVICE" \
             --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
-          scripts/smoke-deployed-shell.sh "$service_url"
+          curl --fail --silent --show-error "$service_url/live" | grep -Fx '{"status":"live"}'
+          curl --fail --silent --show-error "$service_url/ready" | grep -Fx '{"status":"ready"}'
+
+      # The founder runs scripts/smoke-deployed-shell.sh separately. Its preview
+      # gate and recipient address are runtime secrets and must not enter GitHub.

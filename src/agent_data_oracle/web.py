@@ -57,7 +57,7 @@ from agent_data_oracle.evidence_queue import (
     submitted_identifiers_from_json,
 )
 from agent_data_oracle.observability import request_log_fields
-from agent_data_oracle.preview_access import PreviewAccess
+from agent_data_oracle.preview_access import PreviewAccess, normalized_email_set
 
 request_logger = logging.getLogger("agent_data_oracle.http")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -97,31 +97,18 @@ def create_app(
     public_origin: str | None = None,
     secure_cookies: bool | None = None,
     founder_emails: frozenset[str] | None = None,
-    preview_access_secret: str | None = None,
-    preview_recipient_emails: frozenset[str] | None = None,
+    preview_access: PreviewAccess | None = None,
 ) -> FastAPI:
     database = Database(database_url or database_url_from_environment())
-    configured_founder_emails = frozenset(
-        email.strip().casefold()
-        for email in (
-            founder_emails
-            if founder_emails is not None
-            else founder_emails_from_environment()
-        )
-        if email.strip()
+    configured_founder_emails = normalized_email_set(
+        founder_emails
+        if founder_emails is not None
+        else founder_emails_from_environment()
     )
-    if preview_access_secret is None and preview_recipient_emails is None:
-        preview_access_secret, preview_recipient_emails = (
-            preview_access_from_environment()
-        )
-    preview_access = (
-        PreviewAccess.disabled()
-        if preview_access_secret is None and preview_recipient_emails is None
-        else PreviewAccess.founder_only(
-            access_secret=preview_access_secret or "",
-            recipient_emails=preview_recipient_emails or frozenset(),
-            founder_emails=configured_founder_emails,
-        )
+    configured_preview_access = (
+        preview_access
+        if preview_access is not None
+        else preview_access_from_environment(founder_emails=configured_founder_emails)
     )
     human_access = HumanAccess(
         database=database,
@@ -133,14 +120,16 @@ def create_app(
         ),
         clock=clock,
         founder_emails=configured_founder_emails,
-        preview_access=preview_access,
+        preview_access=configured_preview_access,
     )
     evidence_queues = EvidenceQueues(
         database,
         clock=clock,
-        counts_toward_audit_gate=not preview_access.is_enabled,
+        counts_toward_audit_gate=not configured_preview_access.is_enabled,
     )
-    agent_access = AgentAccess(database, clock=clock, preview_access=preview_access)
+    agent_access = AgentAccess(
+        database, clock=clock, preview_access=configured_preview_access
+    )
     use_secure_cookies = (
         secure_cookies
         if secure_cookies is not None
@@ -324,7 +313,7 @@ def create_app(
         return templates.TemplateResponse(
             request,
             "index.html",
-            {"founder_preview": preview_access.is_enabled},
+            {"founder_preview": configured_preview_access.is_enabled},
         )
 
     @app.get("/sign-in", response_class=HTMLResponse)
@@ -332,7 +321,7 @@ def create_app(
         return response_with_csrf(
             request,
             "sign_in.html",
-            {"preview_access_enabled": preview_access.is_enabled},
+            {"preview_access_enabled": configured_preview_access.is_enabled},
         )
 
     @app.post("/auth/sign-in", response_class=HTMLResponse, status_code=202)

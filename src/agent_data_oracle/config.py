@@ -2,6 +2,8 @@ import os
 import secrets
 from urllib.parse import urlsplit
 
+from agent_data_oracle.preview_access import PreviewAccess, normalized_email_set
+
 LOCAL_DATABASE_URL = (
     "postgresql+psycopg://postgres:postgres@127.0.0.1:54329/agent_data_oracle_test"
 )
@@ -25,14 +27,10 @@ def secure_cookies_from_environment() -> bool:
 
 
 def founder_emails_from_environment() -> frozenset[str]:
-    return frozenset(
-        value.strip().casefold()
-        for value in os.environ.get("FOUNDER_EMAILS", "").split(",")
-        if value.strip()
-    )
+    return normalized_email_set(os.environ.get("FOUNDER_EMAILS", "").split(","))
 
 
-def preview_access_from_environment() -> tuple[str | None, frozenset[str] | None]:
+def preview_access_from_environment(*, founder_emails: frozenset[str]) -> PreviewAccess:
     environment = os.environ.get("APP_ENV", "local").casefold()
     secret = os.environ.get("PREVIEW_ACCESS_SECRET")
     configured_recipients = os.environ.get("PREVIEW_RECIPIENT_EMAILS")
@@ -41,17 +39,17 @@ def preview_access_from_environment() -> tuple[str | None, frozenset[str] | None
         and secret is None
         and configured_recipients is None
     ):
-        return None, None
-    recipients = frozenset(
-        value.strip().casefold()
-        for value in (configured_recipients or "").split(",")
-        if value.strip()
-    )
+        return PreviewAccess.disabled()
+    recipients = normalized_email_set((configured_recipients or "").split(","))
     if not secret or not recipients:
         raise RuntimeError(
             "PREVIEW_ACCESS_SECRET and PREVIEW_RECIPIENT_EMAILS are required"
         )
-    return secret, recipients
+    return PreviewAccess.founder_only(
+        access_secret=secret,
+        recipient_emails=recipients,
+        founder_emails=founder_emails,
+    )
 
 
 def validated_public_origin(value: str, *, require_https: bool) -> str:
