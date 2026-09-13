@@ -16,7 +16,11 @@ def run() -> None:
             ]
         )
         context = browser.new_context()
-        blocked = allow_only_origin(context, base_url)
+        blocked = allow_only_origin(
+            context,
+            base_url,
+            allowed_origins=("http://127.0.0.1:18080",),
+        )
         page = context.new_page()
         page.set_default_timeout(10_000)
         page.goto(f"{base_url}/sign-in")
@@ -31,6 +35,15 @@ def run() -> None:
         require(
             page.get_by_role("button", name="Email my secure link").is_enabled(),
             "manual proxy left the sign-in action disabled",
+        )
+        page.get_by_label("Work email").fill("founder@example.com")
+        with page.expect_response(
+            lambda response: "/_local/manual/sign-in-links/claim" in response.url
+        ) as claimed:
+            page.get_by_role("button", name="Email my secure link").click()
+        require(
+            claimed.value.status == 200,
+            f"manual sign-in handoff was rejected ({claimed.value.status})",
         )
         require(not blocked, "manual browser attempted a non-local network request")
         context.close()

@@ -10,16 +10,22 @@ def require(condition: bool, outcome: str) -> None:
         raise RuntimeError(outcome)
 
 
-def allow_only_origin(context: BrowserContext, base_url: str) -> list[str]:
+def allow_only_origin(
+    context: BrowserContext,
+    base_url: str,
+    *,
+    allowed_origins: tuple[str, ...] = (),
+) -> list[str]:
     expected = urlsplit(base_url)
+    allowed = {(expected.scheme, expected.netloc)}
+    allowed.update(
+        (origin.scheme, origin.netloc) for origin in map(urlsplit, allowed_origins)
+    )
     blocked: list[str] = []
 
     def guard(route: Route) -> None:
         destination = urlsplit(route.request.url)
-        if (destination.scheme, destination.netloc) == (
-            expected.scheme,
-            expected.netloc,
-        ):
+        if (destination.scheme, destination.netloc) in allowed:
             route.continue_()
         else:
             blocked.append(route.request.url)

@@ -44,6 +44,19 @@ def start_preview() -> None:
 
 def run() -> None:
     start_preview()
+    result = compose(
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "journeys",
+        check=False,
+    )
+    if result.returncode != 0:
+        fail(
+            "Local preview journey failed. The isolated app remains "
+            "available for inspection; run this script with 'down' when finished."
+        )
     manual_result = compose(
         "run",
         "--build",
@@ -55,19 +68,6 @@ def run() -> None:
     if manual_result.returncode != 0:
         fail(
             "Local preview manual browser check failed. The isolated app remains "
-            "available for inspection; run this script with 'down' when finished."
-        )
-    result = compose(
-        "run",
-        "--build",
-        "--rm",
-        "--no-deps",
-        "journeys",
-        check=False,
-    )
-    if result.returncode != 0:
-        fail(
-            "Local preview journey failed. The isolated app remains available "
             "for inspection; run this script with 'down' when finished."
         )
     print(

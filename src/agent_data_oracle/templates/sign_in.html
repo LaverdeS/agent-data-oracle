@@ -9,6 +9,7 @@
   </p>
   {% if manual_preview %}
   <p id="manual-preview-status" class="quiet">Preparing local browser admission.</p>
+  <p class="quiet">This sealed local fixture accepts <code>founder@example.com</code> only. No email is sent; the browser opens its captured single-use link.</p>
   {% endif %}
   <form id="sign-in-form" method="post" action="/auth/sign-in">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -17,7 +18,7 @@
     <input id="preview_access_secret" name="preview_access_secret" type="password" required autocomplete="off">
     {% endif %}
     <label for="email">Work email</label>
-    <input id="email" name="email" type="email" autocomplete="email" required>
+    <input id="email" name="email" type="email" autocomplete="email"{% if manual_preview %} value="founder@example.com"{% endif %} required>
     <button id="sign-in-submit" type="submit"{% if manual_preview %} disabled{% endif %}>Email my secure link</button>
   </form>
   {% if manual_preview %}
