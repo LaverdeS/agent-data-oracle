@@ -183,6 +183,74 @@ async def test_preview_sign_in_requires_gate_and_founder_recipient_allowlist(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+async def test_manual_preview_proxy_issues_a_one_time_in_memory_sign_in_handoff(
+    postgres_url: str, access_database: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    del access_database
+    monkeypatch.setenv("PREVIEW_RECIPIENT_EMAILS", "founder@example.com")
+    email = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email,
+        clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="http://127.0.0.1:18080",
+        secure_cookies=False,
+        founder_emails=frozenset({"founder@example.com"}),
+        local_preview_harness=True,
+    )
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://127.0.0.1:18080",
+        ) as client,
+    ):
+        rejected = await client.post("/_local/manual/admission")
+        admission = await client.post(
+            "/_local/manual/admission",
+            headers={"X-Local-Preview-Manual": "1"},
+        )
+        form = await client.get("/sign-in", headers={"X-Local-Preview-Manual": "1"})
+        submitted = await client.post(
+            "/auth/sign-in",
+            headers={"X-Local-Preview-Manual": "1"},
+            data={
+                "email": "founder@example.com",
+                "csrf_token": form.cookies["ado_csrf"],
+            },
+        )
+        handoff = await client.post(
+            "/_local/manual/sign-in-links/claim",
+            headers={"X-Local-Preview-Manual": "1"},
+            json={"recipient": "founder@example.com"},
+        )
+        verification = await client.get(handoff.json()["sign_in_url"])
+        replay = await client.post(
+            "/_local/manual/sign-in-links/claim",
+            headers={"X-Local-Preview-Manual": "1"},
+            json={"recipient": "founder@example.com"},
+        )
+
+    assert rejected.status_code == 404
+    assert admission.status_code == 204
+    assert "HttpOnly" in admission.headers["set-cookie"]
+    assert "Max-Age" not in admission.headers["set-cookie"]
+    assert 'name="preview_access_secret"' not in form.text
+    assert "Local browser admission is ready." in form.text
+    assert submitted.status_code == 202
+    assert handoff.status_code == 200
+    assert handoff.json()["sign_in_url"].startswith(
+        "http://127.0.0.1:18080/auth/verify?token="
+    )
+    assert 'history.replaceState(null, "", "/auth/verify")' in verification.text
+    assert replay.status_code == 404
+    assert email.deliveries == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_preview_allowlist_is_rechecked_when_magic_link_is_redeemed(
     postgres_url: str, access_database: None
 ) -> None:

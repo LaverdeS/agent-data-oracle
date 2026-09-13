@@ -7,14 +7,38 @@
     We send the same response whether or not an account exists. Links are
     single-use and expire after 15 minutes.
   </p>
-  <form method="post" action="/auth/sign-in">
+  {% if manual_preview %}
+  <p id="manual-preview-status" class="quiet">Preparing local browser admission.</p>
+  {% endif %}
+  <form id="sign-in-form" method="post" action="/auth/sign-in">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    {% if preview_access_enabled %}
+    {% if preview_access_enabled and not manual_preview %}
     <label for="preview_access_secret">Founder preview access code</label>
     <input id="preview_access_secret" name="preview_access_secret" type="password" required autocomplete="off">
     {% endif %}
     <label for="email">Work email</label>
     <input id="email" name="email" type="email" autocomplete="email" required>
-    <button type="submit">Email my secure link</button>
+    <button id="sign-in-submit" type="submit"{% if manual_preview %} disabled{% endif %}>Email my secure link</button>
   </form>
+  {% if manual_preview %}
+  <script>
+    (() => {
+      const status = document.querySelector("#manual-preview-status");
+      const form = document.querySelector("#sign-in-form");
+      const submit = document.querySelector("#sign-in-submit");
+      fetch("/_local/manual/admission", { method: "POST", credentials: "same-origin" })
+        .then((response) => {
+          if (!response.ok) throw new Error("local preview admission unavailable");
+          status.textContent = "Local browser admission is ready.";
+          submit.disabled = false;
+          form.addEventListener("submit", () => {
+            sessionStorage.setItem("ado-local-preview-recipient", document.querySelector("#email").value);
+          });
+        })
+        .catch(() => {
+          status.textContent = "Local browser admission could not be established. Restart the preview command.";
+        });
+    })();
+  </script>
+  {% endif %}
 {% endblock %}

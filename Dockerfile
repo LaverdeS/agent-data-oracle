@@ -25,6 +25,8 @@ RUN pip install --no-cache-dir \
     greenlet==3.5.5 \
     typing-extensions==4.16.0
 COPY scripts/run_local_preview_journey.py ./run_local_preview_journey.py
+COPY scripts/run_local_manual_browser_check.py ./run_local_manual_browser_check.py
+COPY scripts/local_preview_browser.py ./local_preview_browser.py
 ENTRYPOINT ["python", "run_local_preview_journey.py"]
 
 FROM python:3.13.4-slim-bookworm AS runtime

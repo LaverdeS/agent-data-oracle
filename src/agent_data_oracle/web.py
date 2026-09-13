@@ -62,7 +62,11 @@ from agent_data_oracle.evidence_queue import (
     submitted_identifiers_from_json,
 )
 from agent_data_oracle.observability import request_log_fields
-from agent_data_oracle.preview_access import PreviewAccess, normalized_email_set
+from agent_data_oracle.preview_access import (
+    ManualPreviewAdmission,
+    PreviewAccess,
+    normalized_email_set,
+)
 
 request_logger = logging.getLogger("agent_data_oracle.http")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -121,6 +125,9 @@ def create_app(
         raise ValueError("local preview harness manages its own preview access")
     local_preview_access_secret = (
         secrets.token_urlsafe(32) if use_local_preview_harness else None
+    )
+    manual_preview_admission = (
+        ManualPreviewAdmission() if use_local_preview_harness else None
     )
     configured_preview_access = (
         preview_access
@@ -196,6 +203,21 @@ def create_app(
     app.state.human_access = human_access
     app.state.evidence_queues = evidence_queues
     app.state.agent_access = agent_access
+
+    def has_manual_proxy_marker(request: Request) -> bool:
+        return (
+            use_local_preview_harness
+            and request.headers.get("x-local-preview-manual") == "1"
+        )
+
+    def manual_preview_is_admitted(request: Request) -> bool:
+        return (
+            has_manual_proxy_marker(request)
+            and manual_preview_admission is not None
+            and manual_preview_admission.admits(
+                request.cookies.get("ado_local_preview")
+            )
+        )
 
     def response_with_csrf(
         request: Request,
@@ -304,8 +326,10 @@ def create_app(
         )
 
     if use_local_preview_harness:
-        if local_preview_access_secret is None or not isinstance(
-            selected_email_provider, LocalCaptureEmailProvider
+        if (
+            local_preview_access_secret is None
+            or not isinstance(selected_email_provider, LocalCaptureEmailProvider)
+            or manual_preview_admission is None
         ):
             raise AssertionError("local preview harness was configured inconsistently")
 
@@ -315,20 +339,7 @@ def create_app(
                 "::1",
             }
 
-        @app.post("/_local/preview-access", include_in_schema=False)
-        async def local_preview_access(request: Request) -> Response:
-            if not local_harness_request(request):
-                return HTMLResponse("Not found", status_code=404)
-            return JSONResponse({"preview_access_secret": local_preview_access_secret})
-
-        @app.post("/_local/sign-in-links/claim", include_in_schema=False)
-        async def claim_local_sign_in_link(request: Request) -> Response:
-            if not local_harness_request(request):
-                return HTMLResponse("Not found", status_code=404)
-            supplied = request.headers.get("authorization", "")
-            expected = f"Bearer {local_preview_access_secret}"
-            if not secrets.compare_digest(supplied, expected):
-                return HTMLResponse("Not found", status_code=404)
+        async def claimed_sign_in_link(request: Request) -> Response:
             body = await request.body()
             if len(body) > 1_024:
                 return HTMLResponse("Not found", status_code=404)
@@ -350,6 +361,47 @@ def create_app(
             if sign_in_url is None:
                 return HTMLResponse("Not found", status_code=404)
             return JSONResponse({"sign_in_url": sign_in_url})
+
+        @app.post("/_local/preview-access", include_in_schema=False)
+        async def local_preview_access(request: Request) -> Response:
+            if not local_harness_request(request):
+                return HTMLResponse("Not found", status_code=404)
+            return JSONResponse({"preview_access_secret": local_preview_access_secret})
+
+        @app.post("/_local/sign-in-links/claim", include_in_schema=False)
+        async def claim_local_sign_in_link(request: Request) -> Response:
+            if not local_harness_request(request):
+                return HTMLResponse("Not found", status_code=404)
+            supplied = request.headers.get("authorization", "")
+            expected = f"Bearer {local_preview_access_secret}"
+            if not secrets.compare_digest(supplied, expected):
+                return HTMLResponse("Not found", status_code=404)
+            return await claimed_sign_in_link(request)
+
+        @app.post("/_local/manual/admission", include_in_schema=False)
+        async def issue_manual_preview_admission(request: Request) -> Response:
+            if not has_manual_proxy_marker(request):
+                return HTMLResponse("Not found", status_code=404)
+            response = Response(status_code=204)
+            response.set_cookie(
+                "ado_local_preview",
+                manual_preview_admission.issue(),
+                httponly=True,
+                samesite="strict",
+            )
+            return response
+
+        @app.post("/_local/manual/sign-in-links/claim", include_in_schema=False)
+        async def claim_manual_sign_in_link(request: Request) -> Response:
+            if not has_manual_proxy_marker(
+                request
+            ) or not manual_preview_admission.consume(
+                request.cookies.get("ado_local_preview")
+            ):
+                return HTMLResponse("Not found", status_code=404)
+            response = await claimed_sign_in_link(request)
+            response.delete_cookie("ado_local_preview")
+            return response
 
     async def agent_for_scope(
         request: Request, required_scope: str
@@ -402,7 +454,10 @@ def create_app(
         return response_with_csrf(
             request,
             "sign_in.html",
-            {"preview_access_enabled": configured_preview_access.is_enabled},
+            {
+                "manual_preview": has_manual_proxy_marker(request),
+                "preview_access_enabled": configured_preview_access.is_enabled,
+            },
         )
 
     @app.post("/auth/sign-in", response_class=HTMLResponse, status_code=202)
@@ -417,10 +472,17 @@ def create_app(
             email=fields.get("email", ""),
             network_identity=network_identity,
             base_url=sign_in_origin,
-            preview_access_secret=fields.get("preview_access_secret", ""),
+            preview_access_secret=(
+                local_preview_access_secret or ""
+                if use_local_preview_harness and manual_preview_is_admitted(request)
+                else fields.get("preview_access_secret", "")
+            ),
         )
         return templates.TemplateResponse(
-            request, "sign_in_requested.html", status_code=202
+            request,
+            "sign_in_requested.html",
+            {"manual_preview": manual_preview_is_admitted(request)},
+            status_code=202,
         )
 
     @app.get("/auth/verify", response_class=HTMLResponse)

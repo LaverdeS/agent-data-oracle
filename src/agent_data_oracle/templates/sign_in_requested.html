@@ -7,4 +7,25 @@
     If the address can receive sign-in email, a single-use link will arrive
     shortly and remain valid for 15 minutes.
   </p>
+  {% if manual_preview %}
+  <p id="manual-preview-status" class="quiet">Opening the local single-use link.</p>
+  <script>
+    (() => {
+      const recipient = sessionStorage.getItem("ado-local-preview-recipient");
+      sessionStorage.removeItem("ado-local-preview-recipient");
+      if (!recipient) return;
+      fetch("/_local/manual/sign-in-links/claim", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipient })
+      })
+        .then((response) => response.ok ? response.json() : Promise.reject())
+        .then((document) => window.location.replace(document.sign_in_url))
+        .catch(() => {
+          document.querySelector("#manual-preview-status").textContent = "The local sign-in handoff expired. Request a new link.";
+        });
+    })();
+  </script>
+  {% endif %}
 {% endblock %}

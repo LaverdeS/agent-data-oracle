@@ -8,13 +8,9 @@ import struct
 import time
 from urllib.parse import urlsplit
 
-from playwright.sync_api import BrowserContext, Page, Route, sync_playwright
+from local_preview_browser import allow_only_origin, require
 from playwright.sync_api import Error as PlaywrightError
-
-
-def require(condition: bool, outcome: str) -> None:
-    if not condition:
-        raise RuntimeError(outcome)
+from playwright.sync_api import Page, sync_playwright
 
 
 def totp_code(secret: str) -> str:
@@ -51,26 +47,6 @@ def claim_sign_in_link(
     return sign_in_url
 
 
-def allow_only_application(context: BrowserContext, base_url: str) -> list[str]:
-    expected = urlsplit(base_url)
-    blocked: list[str] = []
-
-    def guard(route: Route) -> None:
-        request = route.request
-        destination = urlsplit(request.url)
-        if (destination.scheme, destination.netloc) == (
-            expected.scheme,
-            expected.netloc,
-        ):
-            route.continue_()
-        else:
-            blocked.append(request.url)
-            route.abort()
-
-    context.route("**/*", guard)
-    return blocked
-
-
 def submit_sign_in(
     page: Page, *, base_url: str, recipient: str, preview_secret: str
 ) -> None:
@@ -105,7 +81,7 @@ def run() -> None:
             ]
         )
         context = browser.new_context()
-        blocked = allow_only_application(context, base_url)
+        blocked = allow_only_origin(context, base_url)
         page = context.new_page()
         page.set_default_timeout(10_000)
         access_response = page.request.post(f"{base_url}/_local/preview-access")
@@ -190,7 +166,7 @@ def run() -> None:
         page.get_by_role("button", name="Continue securely").click()
 
         replay_context = browser.new_context()
-        replay_blocked = allow_only_application(replay_context, base_url)
+        replay_blocked = allow_only_origin(replay_context, base_url)
         replay_page = replay_context.new_page()
         open_captured_sign_in(replay_page, base_url=base_url, sign_in_url=sign_in_url)
         replay_page.get_by_role("button", name="Continue securely").click()

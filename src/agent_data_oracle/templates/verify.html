@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Confirm sign-in · Agent Data Oracle{% endblock %}
 {% block content %}
+  <script>history.replaceState(null, "", "/auth/verify");</script>
   <p class="quiet">Single-use verification</p>
   <h1>Confirm this sign-in</h1>
   <p class="lede">Continue only if you requested this link on this device.</p>

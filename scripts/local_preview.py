@@ -2,6 +2,8 @@
 
 import argparse
 import subprocess
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import NoReturn
 
@@ -24,12 +26,42 @@ def fail(message: str) -> NoReturn:
     raise SystemExit(message)
 
 
-def run() -> None:
+def check_manual_preview() -> None:
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:18080/", timeout=5) as page:
+            body = page.read()
+    except urllib.error.URLError as error:
+        fail(f"Local preview host browser check failed: {error.reason}")
+    if page.status != 200 or b"Founder-only development preview" not in body:
+        fail("Local preview host browser check did not reach the founder UI.")
+
+
+def start_preview() -> None:
     compose("down", "--volumes", "--remove-orphans")
+    compose("up", "--build", "--wait", "app", "manual")
+    check_manual_preview()
+
+
+def run() -> None:
+    start_preview()
+    manual_result = compose(
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "manual-check",
+        check=False,
+    )
+    if manual_result.returncode != 0:
+        fail(
+            "Local preview manual browser check failed. The isolated app remains "
+            "available for inspection; run this script with 'down' when finished."
+        )
     result = compose(
         "run",
         "--build",
         "--rm",
+        "--no-deps",
         "journeys",
         check=False,
     )
@@ -44,12 +76,22 @@ def run() -> None:
     )
 
 
+def manual() -> None:
+    start_preview()
+    print(
+        "Local founder preview is ready at http://127.0.0.1:18080; "
+        "run this script with 'down' to remove it."
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("run", "down"))
+    parser.add_argument("action", choices=("run", "manual", "down"))
     arguments = parser.parse_args()
     if arguments.action == "run":
         run()
+    elif arguments.action == "manual":
+        manual()
     else:
         compose("down", "--volumes", "--remove-orphans")
 
