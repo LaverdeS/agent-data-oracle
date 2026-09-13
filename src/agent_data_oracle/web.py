@@ -225,7 +225,7 @@ def create_app(
         context: dict[str, object] | None = None,
         *,
         status_code: int = 200,
-        reuse_current_token: bool = False,
+        reuse_current_token: bool = True,
     ) -> Response:
         csrf_token = (
             request.cookies.get("ado_csrf") if reuse_current_token else None
@@ -236,7 +236,7 @@ def create_app(
             {"csrf_token": csrf_token, **(context or {})},
             status_code=status_code,
         )
-        if request.cookies.get("ado_csrf") != csrf_token:
+        if reuse_current_token or request.cookies.get("ado_csrf") != csrf_token:
             response.set_cookie(
                 "ado_csrf",
                 csrf_token,

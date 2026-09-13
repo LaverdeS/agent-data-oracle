@@ -129,6 +129,85 @@ async def sign_in_and_declare(
     )
 
 
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_evidence_queue_form_survives_another_authenticated_page_load(
+    postgres_url: str, evidence_database: AsyncEngine
+) -> None:
+    del evidence_database
+    import_completed_fixture(postgres_url)
+    email_provider = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email_provider,
+        clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
+        secure_cookies=True,
+    )
+    values = [
+        "HANS0002",
+        "HARPPA",
+        "HARPPA Inc Denver",
+        "hans0002",
+        "HANS-0002",
+        "Nordi2",
+        "HANS0003",
+        "HARPPA Inc",
+        "000123456789",
+        "000-123 456789",
+    ]
+    identifier_types = [
+        "model",
+        "brand",
+        "brand",
+        "model",
+        "model",
+        "model",
+        "model",
+        "brand",
+        "upc",
+        "upc",
+    ]
+    rows = [
+        entry
+        for index in range(50)
+        for entry in (
+            (
+                "identifier_type",
+                identifier_types[index] if index < len(identifier_types) else "upc",
+            ),
+            ("identifier_value", values[index] if index < len(values) else ""),
+        )
+    ]
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as client,
+    ):
+        await sign_in_and_declare(client, email_provider, "operator@example.com")
+        form = await client.get("/queues/new")
+        await client.get("/app")
+        submitted = await client.post(
+            "/queues",
+            content=urlencode(
+                [
+                    *rows,
+                    ("authorization", "authorized"),
+                    ("idempotency_key", form.headers["x-idempotency-key"]),
+                    ("csrf_token", form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+
+    assert submitted.status_code == 303
+
+
 def totp_code(secret: str, instant: datetime) -> str:
     key = base64.b32decode(secret + "=" * (-len(secret) % 8))
     counter = int(instant.timestamp()) // 30
