@@ -1,10 +1,17 @@
 import hashlib
 import json
+import random
+import time
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, cast
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode, urlsplit
+from urllib.request import Request, urlopen
 from uuid import UUID, uuid4
 
 from sqlalchemy import text
@@ -12,6 +19,23 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 CPSC_RECALL_API_URL = "https://www.saferproducts.gov/RestWebServices/Recall"
+RETRIEVAL_TIMEOUT_SECONDS = 20.0
+MAX_RETRIEVAL_ATTEMPTS = 3
+
+
+class CpscRefreshMode(StrEnum):
+    FIXTURE = "fixture"
+    DAILY = "daily"
+    FULL = "full"
+
+
+class CpscRetrievalError(RuntimeError):
+    """A CPSC response could not be safely retrieved."""
+
+    def __init__(self, error_code: str, *, transient: bool) -> None:
+        super().__init__(error_code)
+        self.error_code = error_code
+        self.transient = transient
 
 
 class SourceValidationError(ValueError):
@@ -22,6 +46,85 @@ class RevisionState(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
     REJECTED = "rejected"
+
+
+def _rfc3339(value: datetime) -> str:
+    return (
+        value.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
+
+
+def build_cpsc_recall_url(
+    mode: CpscRefreshMode, *, last_completed_at: datetime | None = None
+) -> str:
+    """Build the sole permitted live-source URL for a bounded refresh."""
+    parameters: dict[str, str] = {"format": "json"}
+    if mode is CpscRefreshMode.DAILY:
+        if last_completed_at is None:
+            raise ValueError("daily refresh requires the last completed source time")
+        parameters = {
+            "LastPublishDateStart": _rfc3339(last_completed_at - timedelta(days=7)),
+            "format": "json",
+        }
+    return f"{CPSC_RECALL_API_URL}?{urlencode(parameters)}"
+
+
+def _is_documented_cpsc_api_url(value: str) -> bool:
+    parsed = urlsplit(value)
+    return (
+        parsed.scheme == "https"
+        and parsed.hostname == "www.saferproducts.gov"
+        and parsed.port is None
+        and parsed.username is None
+        and parsed.password is None
+        and parsed.path == "/RestWebServices/Recall"
+    )
+
+
+def _http_fetch(url: str, timeout_seconds: float) -> bytes:
+    if not _is_documented_cpsc_api_url(url):
+        raise CpscRetrievalError("source_endpoint_invalid", transient=False)
+    request = Request(url, headers={"Accept": "application/json"})
+    try:
+        with urlopen(request, timeout=timeout_seconds) as response:
+            if not _is_documented_cpsc_api_url(response.url):
+                raise CpscRetrievalError("source_redirect_invalid", transient=False)
+            if response.status != 200:
+                raise CpscRetrievalError(
+                    f"http_{response.status}", transient=response.status >= 500
+                )
+            body = cast(bytes, response.read())
+            declared_length = response.headers.get("Content-Length")
+            if declared_length is not None and declared_length != str(len(body)):
+                raise CpscRetrievalError("transport_truncated", transient=True)
+            return body
+    except HTTPError as error:
+        raise CpscRetrievalError(
+            f"http_{error.code}", transient=error.code >= 500
+        ) from error
+    except (TimeoutError, URLError) as error:
+        raise CpscRetrievalError("transport_failed", transient=True) from error
+
+
+async def retrieve_cpsc_response(
+    url: str,
+    *,
+    fetch: Callable[[str, float], bytes] = _http_fetch,
+    sleep: Callable[[float], None] = time.sleep,
+    jitter: Callable[[], float] = random.random,
+) -> bytes:
+    """Retrieve one bounded response, with no more than three total attempts."""
+    for attempt in range(MAX_RETRIEVAL_ATTEMPTS):
+        try:
+            return fetch(url, RETRIEVAL_TIMEOUT_SECONDS)
+        except CpscRetrievalError as error:
+            if not error.transient or attempt == MAX_RETRIEVAL_ATTEMPTS - 1:
+                raise
+        except TimeoutError as error:
+            if attempt == MAX_RETRIEVAL_ATTEMPTS - 1:
+                raise CpscRetrievalError("transport_failed", transient=True) from error
+        sleep((2.0**attempt) + jitter())
+    raise AssertionError("unreachable retrieval retry state")
 
 
 @dataclass(frozen=True)
@@ -75,10 +178,11 @@ class RejectedImport:
 @dataclass(frozen=True)
 class FailedImport:
     revision_id: UUID
+    error_code: str = "promotion_failed"
 
     def as_dict(self) -> dict[str, object]:
         return {
-            "error_code": "promotion_failed",
+            "error_code": self.error_code,
             "revision_id": str(self.revision_id),
             "state": RevisionState.FAILED,
         }
@@ -109,7 +213,7 @@ def _optional_source_literal(record: dict[str, Any], field: str) -> str | None:
 
 
 def parse_source_records(
-    raw_response: bytes, *, expected_record_count: int
+    raw_response: bytes, *, expected_record_count: int | None
 ) -> tuple[CpscRecord, ...]:
     try:
         document = json.loads(raw_response)
@@ -117,7 +221,7 @@ def parse_source_records(
         raise SourceValidationError("invalid_json") from error
     if not isinstance(document, list):
         raise SourceValidationError("expected_record_array")
-    if len(document) != expected_record_count:
+    if expected_record_count is not None and len(document) != expected_record_count:
         raise SourceValidationError("record_count_mismatch")
 
     records: list[CpscRecord] = []
@@ -133,6 +237,14 @@ def parse_source_records(
             raise SourceValidationError("duplicate_RecallID")
         recall_ids.add(recall_id)
 
+        official_url = _required_text(record, "URL")
+        parsed_url = urlsplit(official_url)
+        if parsed_url.scheme != "https" or parsed_url.hostname not in {
+            "www.cpsc.gov",
+            "cpsc.gov",
+        }:
+            raise SourceValidationError("official_notice_provenance_invalid")
+
         canonical_json = json.dumps(
             record,
             ensure_ascii=False,
@@ -147,7 +259,7 @@ def parse_source_records(
                 last_publish_date_literal=_optional_source_literal(
                     record, "LastPublishDate"
                 ),
-                official_url=_required_text(record, "URL"),
+                official_url=official_url,
                 raw_record=record,
                 canonical_json=canonical_json,
                 content_hash=hashlib.sha256(canonical_json.encode("utf-8")).hexdigest(),
@@ -163,19 +275,23 @@ async def _start_revision(
     source_url: str,
     observed_at: datetime,
     raw_response: bytes,
+    refresh_mode: CpscRefreshMode,
+    retrieval_attempts: int = 0,
 ) -> None:
     await connection.execute(
         text(
             "INSERT INTO cpsc_ingestion_runs "
             "(run_id, source_url, observed_at, raw_response, raw_response_sha256, "
-            "state, created_at) VALUES "
+            "state, refresh_mode, retrieval_attempts, created_at) VALUES "
             "(:run_id, :source_url, :observed_at, :raw_response, :raw_hash, "
-            "'pending', CURRENT_TIMESTAMP)"
+            "'pending', :refresh_mode, :retrieval_attempts, CURRENT_TIMESTAMP)"
         ),
         {
             "observed_at": observed_at,
             "raw_hash": hashlib.sha256(raw_response).hexdigest(),
             "raw_response": raw_response,
+            "refresh_mode": refresh_mode.value,
+            "retrieval_attempts": retrieval_attempts,
             "run_id": identity.run_id,
             "source_url": source_url,
         },
@@ -220,6 +336,32 @@ async def _finish_unsuccessful_revision(
             "completeness = 'partial' WHERE revision_id = :revision_id"
         ),
         {"revision_id": identity.revision_id, "state": state.value},
+    )
+
+
+async def _activate_source_integrity_pause(
+    connection: AsyncConnection, *, error_code: str
+) -> None:
+    await connection.execute(
+        text(
+            "INSERT INTO global_pause_state "
+            "(singleton, is_paused, trigger_kind, reason_category, activated_at) "
+            "VALUES (true, true, 'source_integrity', :error_code, CURRENT_TIMESTAMP) "
+            "ON CONFLICT (singleton) DO UPDATE SET is_paused = true, "
+            "trigger_kind = 'source_integrity', reason_category = :error_code, "
+            "activated_at = CURRENT_TIMESTAMP, resolution_note = NULL, "
+            "resolved_at = NULL, resolved_by = NULL "
+            "WHERE global_pause_state.is_paused = false"
+        ),
+        {"error_code": error_code},
+    )
+    await connection.execute(
+        text(
+            "UPDATE cpsc_source_refresh_state SET "
+            "integrity_pause_reason = :error_code, last_failure_kind = :error_code, "
+            "updated_at = CURRENT_TIMESTAMP WHERE singleton = true"
+        ),
+        {"error_code": error_code},
     )
 
 
@@ -278,7 +420,29 @@ async def _promote_revision(
     identity: RevisionIdentity,
     records: tuple[CpscRecord, ...],
     observed_at: datetime,
-) -> int:
+    refresh_mode: CpscRefreshMode,
+) -> tuple[int, int]:
+    if refresh_mode is CpscRefreshMode.DAILY:
+        current_records = (
+            await connection.execute(
+                text(
+                    "SELECT recall_id, normalized_record FROM cpsc_current_records "
+                    "ORDER BY recall_id"
+                )
+            )
+        ).mappings()
+        returned_recall_ids = {record.recall_id for record in records}
+        retained_raw_records = [
+            row["normalized_record"]
+            for row in current_records
+            if row["recall_id"] not in returned_recall_ids
+        ]
+        if retained_raw_records:
+            retained_records = parse_source_records(
+                json.dumps(retained_raw_records).encode(), expected_record_count=None
+            )
+            records = (*records, *retained_records)
+
     reused_count = 0
     for position, record in enumerate(records):
         version_id, reused = await _record_version(
@@ -316,6 +480,34 @@ async def _promote_revision(
         )
 
     record_count = len(records)
+    if refresh_mode is CpscRefreshMode.FULL:
+        current_rows = (
+            await connection.execute(
+                text(
+                    "SELECT recall_id, revision_id FROM cpsc_current_records "
+                    "ORDER BY recall_id"
+                )
+            )
+        ).mappings()
+        received_recall_ids = {record.recall_id for record in records}
+        for current in current_rows:
+            if current["recall_id"] not in received_recall_ids:
+                await connection.execute(
+                    text(
+                        "INSERT INTO cpsc_source_tombstones "
+                        "(tombstone_id, revision_id, recall_id, "
+                        "last_seen_revision_id, recorded_at) VALUES "
+                        "(:tombstone_id, :revision_id, :recall_id, "
+                        ":last_seen_revision_id, :recorded_at)"
+                    ),
+                    {
+                        "last_seen_revision_id": current["revision_id"],
+                        "recall_id": current["recall_id"],
+                        "recorded_at": observed_at,
+                        "revision_id": identity.revision_id,
+                        "tombstone_id": uuid4(),
+                    },
+                )
     await connection.execute(
         text(
             "UPDATE cpsc_source_revisions SET state = 'completed', "
@@ -326,6 +518,14 @@ async def _promote_revision(
             "record_count": record_count,
             "revision_id": identity.revision_id,
         },
+    )
+    await connection.execute(
+        text(
+            "UPDATE cpsc_source_refresh_state SET "
+            "last_successful_observed_at = :observed_at, last_failure_kind = NULL, "
+            "updated_at = CURRENT_TIMESTAMP WHERE singleton = true"
+        ),
+        {"observed_at": observed_at},
     )
     await connection.execute(
         text(
@@ -367,7 +567,7 @@ async def _promote_revision(
             "run_id": identity.run_id,
         },
     )
-    return reused_count
+    return reused_count, record_count
 
 
 async def import_cpsc_fixture(
@@ -389,6 +589,7 @@ async def import_cpsc_fixture(
                 source_url=source_url,
                 observed_at=observed_at,
                 raw_response=raw_response,
+                refresh_mode=CpscRefreshMode.FIXTURE,
             )
         try:
             records = parse_source_records(
@@ -408,11 +609,12 @@ async def import_cpsc_fixture(
 
         try:
             async with engine.begin() as connection:
-                reused_count = await _promote_revision(
+                reused_count, record_count = await _promote_revision(
                     connection,
                     identity=identity,
                     records=records,
                     observed_at=observed_at,
+                    refresh_mode=CpscRefreshMode.FIXTURE,
                 )
         except SQLAlchemyError:
             async with engine.begin() as connection:
@@ -425,7 +627,7 @@ async def import_cpsc_fixture(
             return FailedImport(revision_id=identity.revision_id)
         return ImportResult(
             revision_id=identity.revision_id,
-            record_count=len(records),
+            record_count=record_count,
             reused_version_count=reused_count,
             content_hashes=tuple(record.content_hash for record in records),
         )
@@ -433,7 +635,241 @@ async def import_cpsc_fixture(
         await engine.dispose()
 
 
-async def cpsc_source_status(database_url: str) -> dict[str, object]:
+async def import_cpsc_refresh_response(
+    *,
+    database_url: str,
+    raw_response: bytes,
+    observed_at: datetime,
+    expected_record_count: int | None,
+    source_url: str,
+    refresh_mode: CpscRefreshMode,
+    retrieval_attempts: int,
+) -> ImportResult | RejectedImport | FailedImport:
+    """Validate and atomically promote a live CPSC response.
+
+    The caller owns transport and supplies the exact received bytes.  No partial
+    parsing result is ever passed to promotion.
+    """
+    if refresh_mode not in {CpscRefreshMode.DAILY, CpscRefreshMode.FULL}:
+        raise ValueError("a refresh response must be daily or full")
+    identity = RevisionIdentity(run_id=uuid4(), revision_id=uuid4())
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            await _start_revision(
+                connection,
+                identity=identity,
+                source_url=source_url,
+                observed_at=observed_at,
+                raw_response=raw_response,
+                refresh_mode=refresh_mode,
+                retrieval_attempts=retrieval_attempts,
+            )
+        try:
+            records = parse_source_records(
+                raw_response, expected_record_count=expected_record_count
+            )
+        except SourceValidationError as error:
+            async with engine.begin() as connection:
+                await _finish_unsuccessful_revision(
+                    connection,
+                    identity=identity,
+                    state=RevisionState.REJECTED,
+                    error_code=str(error),
+                )
+                await connection.execute(
+                    text(
+                        "UPDATE cpsc_source_refresh_state SET "
+                        "last_failure_kind = :error_code, "
+                        "updated_at = CURRENT_TIMESTAMP "
+                        "WHERE singleton = true"
+                    ),
+                    {"error_code": str(error)},
+                )
+                await _activate_source_integrity_pause(
+                    connection, error_code=str(error)
+                )
+            return RejectedImport(
+                revision_id=identity.revision_id, error_code=str(error)
+            )
+        try:
+            async with engine.begin() as connection:
+                reused_count, record_count = await _promote_revision(
+                    connection,
+                    identity=identity,
+                    records=records,
+                    observed_at=observed_at,
+                    refresh_mode=refresh_mode,
+                )
+        except SQLAlchemyError:
+            async with engine.begin() as connection:
+                await _finish_unsuccessful_revision(
+                    connection,
+                    identity=identity,
+                    state=RevisionState.FAILED,
+                    error_code="promotion_failed",
+                )
+                await connection.execute(
+                    text(
+                        "UPDATE cpsc_source_refresh_state SET "
+                        "last_failure_kind = 'promotion_failed', "
+                        "updated_at = CURRENT_TIMESTAMP WHERE singleton = true"
+                    )
+                )
+            return FailedImport(revision_id=identity.revision_id)
+        return ImportResult(
+            revision_id=identity.revision_id,
+            record_count=record_count,
+            reused_version_count=reused_count,
+            content_hashes=tuple(record.content_hash for record in records),
+        )
+    finally:
+        await engine.dispose()
+
+
+async def _last_completed_source_observed_at(database_url: str) -> datetime | None:
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.connect() as connection:
+            observed_at = await connection.scalar(
+                text(
+                    "SELECT runs.observed_at "
+                    "FROM cpsc_current_source_revision AS current "
+                    "JOIN cpsc_source_revisions AS revisions "
+                    "ON revisions.revision_id = current.revision_id "
+                    "JOIN cpsc_ingestion_runs AS runs "
+                    "ON runs.run_id = revisions.run_id "
+                    "WHERE current.singleton = true"
+                )
+            )
+    finally:
+        await engine.dispose()
+    return observed_at if isinstance(observed_at, datetime) else None
+
+
+@asynccontextmanager
+async def _source_refresh_lock(database_url: str) -> AsyncIterator[None]:
+    """Serialize the complete live-refresh workflow across processes."""
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(
+                text("SELECT pg_advisory_lock(hashtextextended('cpsc-refresh', 0))")
+            )
+            try:
+                yield
+            finally:
+                await connection.execute(
+                    text(
+                        "SELECT pg_advisory_unlock(hashtextextended('cpsc-refresh', 0))"
+                    )
+                )
+    finally:
+        await engine.dispose()
+
+
+async def _record_transport_failure(
+    *,
+    database_url: str,
+    source_url: str,
+    observed_at: datetime,
+    refresh_mode: CpscRefreshMode,
+    error_code: str,
+) -> FailedImport:
+    identity = RevisionIdentity(run_id=uuid4(), revision_id=uuid4())
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            await _start_revision(
+                connection,
+                identity=identity,
+                source_url=source_url,
+                observed_at=observed_at,
+                raw_response=b"",
+                refresh_mode=refresh_mode,
+                retrieval_attempts=MAX_RETRIEVAL_ATTEMPTS,
+            )
+            await _finish_unsuccessful_revision(
+                connection,
+                identity=identity,
+                state=RevisionState.FAILED,
+                error_code=error_code,
+            )
+            await connection.execute(
+                text(
+                    "UPDATE cpsc_source_refresh_state SET "
+                    "last_failure_kind = :error_code, updated_at = CURRENT_TIMESTAMP "
+                    "WHERE singleton = true"
+                ),
+                {"error_code": error_code},
+            )
+    finally:
+        await engine.dispose()
+    return FailedImport(revision_id=identity.revision_id, error_code=error_code)
+
+
+async def refresh_cpsc_source(
+    *,
+    database_url: str,
+    refresh_mode: CpscRefreshMode,
+    observed_at: datetime,
+    expected_record_count: int | None = None,
+    fetch: Callable[[str, float], bytes] = _http_fetch,
+) -> ImportResult | RejectedImport | FailedImport:
+    """Run the bounded live-source path; fixtures use the separate importer."""
+    if refresh_mode not in {CpscRefreshMode.DAILY, CpscRefreshMode.FULL}:
+        raise ValueError("refresh mode must be daily or full")
+    async with _source_refresh_lock(database_url):
+        last_completed_at = await _last_completed_source_observed_at(database_url)
+        try:
+            source_url = build_cpsc_recall_url(
+                refresh_mode,
+                last_completed_at=last_completed_at,
+            )
+        except ValueError:
+            return await _record_transport_failure(
+                database_url=database_url,
+                source_url=CPSC_RECALL_API_URL,
+                observed_at=observed_at,
+                refresh_mode=refresh_mode,
+                error_code="completed_revision_required",
+            )
+        if (
+            refresh_mode is CpscRefreshMode.DAILY
+            and last_completed_at is not None
+            and observed_at - last_completed_at > timedelta(hours=48)
+        ):
+            return await _record_transport_failure(
+                database_url=database_url,
+                source_url=source_url,
+                observed_at=observed_at,
+                refresh_mode=refresh_mode,
+                error_code="stale_source_requires_weekly_reconciliation",
+            )
+        try:
+            raw_response = await retrieve_cpsc_response(source_url, fetch=fetch)
+        except CpscRetrievalError as error:
+            return await _record_transport_failure(
+                database_url=database_url,
+                source_url=source_url,
+                observed_at=observed_at,
+                refresh_mode=refresh_mode,
+                error_code=error.error_code,
+            )
+        return await import_cpsc_refresh_response(
+            database_url=database_url,
+            raw_response=raw_response,
+            observed_at=observed_at,
+            expected_record_count=expected_record_count,
+            source_url=source_url,
+            refresh_mode=refresh_mode,
+            retrieval_attempts=1,
+        )
+
+
+async def cpsc_source_status(
+    database_url: str, *, now: datetime | None = None
+) -> dict[str, object]:
     engine: AsyncEngine = create_async_engine(database_url)
     try:
         async with engine.connect() as connection:
@@ -442,15 +878,30 @@ async def cpsc_source_status(database_url: str) -> dict[str, object]:
                     await connection.execute(
                         text(
                             "SELECT revisions.revision_id, revisions.completed_at, "
-                            "revisions.record_count FROM cpsc_current_source_revision "
+                            "revisions.record_count, runs.observed_at "
+                            "FROM cpsc_current_source_revision "
                             "AS current JOIN cpsc_source_revisions AS revisions "
                             "ON revisions.revision_id = current.revision_id "
+                            "JOIN cpsc_ingestion_runs AS runs "
+                            "ON runs.run_id = revisions.run_id "
                             "WHERE current.singleton = true"
                         )
                     )
                 )
                 .mappings()
                 .one_or_none()
+            )
+            refresh_state = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT last_failure_kind, integrity_pause_reason "
+                            "FROM cpsc_source_refresh_state WHERE singleton = true"
+                        )
+                    )
+                )
+                .mappings()
+                .one()
             )
             last_run = (
                 (
@@ -471,6 +922,26 @@ async def cpsc_source_status(database_url: str) -> dict[str, object]:
     def instant(value: object) -> str:
         return cast(datetime, value).astimezone(UTC).isoformat()
 
+    current_time = (now or datetime.now(UTC)).astimezone(UTC)
+    if current is None:
+        availability = "unavailable"
+        freshness = "unavailable"
+    elif refresh_state["integrity_pause_reason"] is not None:
+        availability = "integrity_paused"
+        freshness = "unavailable"
+    else:
+        observed_at = cast(datetime, current["observed_at"])
+        is_within_grace = current_time - observed_at <= timedelta(hours=48)
+        freshness = "current" if is_within_grace else "stale"
+        last_run_succeeded = last_run is not None and last_run["state"] == "completed"
+        availability = (
+            "ready"
+            if is_within_grace and last_run_succeeded
+            else "transient_failure"
+            if is_within_grace
+            else "disabled"
+        )
+
     return {
         "current_revision": (
             None
@@ -479,6 +950,7 @@ async def cpsc_source_status(database_url: str) -> dict[str, object]:
                 "completed_at": instant(current["completed_at"]),
                 "record_count": current["record_count"],
                 "revision_id": str(current["revision_id"]),
+                "observed_at": instant(current["observed_at"]),
             }
         ),
         "last_run": (
@@ -490,4 +962,10 @@ async def cpsc_source_status(database_url: str) -> dict[str, object]:
                 "state": last_run["state"],
             }
         ),
+        "source_status": {
+            "application_readiness": availability,
+            "freshness": freshness,
+            "last_failure_kind": refresh_state["last_failure_kind"],
+            "integrity_pause_reason": refresh_state["integrity_pause_reason"],
+        },
     }

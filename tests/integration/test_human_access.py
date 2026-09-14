@@ -600,6 +600,7 @@ async def test_founder_requires_totp_and_receives_one_time_recovery_codes(
     assert "shown only once" in enrolled.text
     assert founder_shell.status_code == 200
     assert "Founder controls" in founder_shell.text
+    assert "CPSC source status" in founder_shell.text
     assert challenge_redirect.headers["location"] == "/founder/totp"
     assert recovered.status_code == 303
     assert recovered.headers["location"] == "/founder"

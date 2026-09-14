@@ -12,6 +12,15 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from agent_data_oracle.cpsc_source import (
+    CPSC_RECALL_API_URL,
+    CpscRefreshMode,
+    RejectedImport,
+    cpsc_source_status,
+    import_cpsc_refresh_response,
+    refresh_cpsc_source,
+)
+
 FIXTURE = Path("tests/fixtures/cpsc/recall-10887.json")
 FIXTURE_SOURCE_URL = (
     "https://www.saferproducts.gov/RestWebServices/Recall?RecallID=10887&format=json"
@@ -65,15 +74,170 @@ async def source_database(postgres_url: str) -> AsyncEngine:
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE cpsc_current_records, cpsc_revision_records, "
+                "TRUNCATE cpsc_source_tombstones, cpsc_current_source_revision, "
+                "cpsc_current_records, "
+                "cpsc_revision_records, "
                 "cpsc_source_observations, cpsc_recall_versions, cpsc_recalls, "
                 "cpsc_source_revisions, cpsc_ingestion_runs CASCADE"
+            )
+        )
+        await connection.execute(
+            text(
+                "UPDATE cpsc_source_refresh_state SET "
+                "last_successful_observed_at = NULL, last_failure_kind = NULL, "
+                "integrity_pause_reason = NULL, updated_at = CURRENT_TIMESTAMP "
+                "WHERE singleton = true"
+            )
+        )
+        await connection.execute(
+            text(
+                "INSERT INTO global_pause_state (singleton, is_paused) "
+                "VALUES (true, false) ON CONFLICT (singleton) DO UPDATE "
+                "SET is_paused = false, trigger_kind = NULL, reason_category = NULL, "
+                "activated_at = NULL, activated_by = NULL, resolution_note = NULL, "
+                "resolved_at = NULL, resolved_by = NULL"
             )
         )
     try:
         yield engine
     finally:
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_full_reconciliation_records_disappearances_as_tombstones(
+    postgres_url: str, source_database: AsyncEngine
+) -> None:
+    first = import_fixture(postgres_url, "2026-08-01T12:00:00Z")
+    assert first.returncode == 0, first.stderr
+
+    empty_response = await import_cpsc_refresh_response(
+        database_url=postgres_url,
+        raw_response=b"[]",
+        observed_at=datetime(2026, 8, 2, tzinfo=UTC),
+        expected_record_count=0,
+        source_url=f"{CPSC_RECALL_API_URL}?format=json",
+        refresh_mode=CpscRefreshMode.FULL,
+        retrieval_attempts=1,
+    )
+
+    assert empty_response.record_count == 0
+    async with source_database.connect() as connection:
+        tombstones = await connection.execute(
+            text("SELECT recall_id FROM cpsc_source_tombstones ORDER BY recall_id")
+        )
+    assert tombstones.all() == [(10887,)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_daily_overlap_keeps_unreturned_current_records(
+    postgres_url: str, source_database: AsyncEngine
+) -> None:
+    records = json.loads(FIXTURE.read_text())
+    second_record = dict(records[0])
+    second_record["RecallID"] = 20887
+    second_record["RecallNumber"] = "99999"
+    first_full = await import_cpsc_refresh_response(
+        database_url=postgres_url,
+        raw_response=json.dumps([records[0], second_record]).encode(),
+        observed_at=datetime(2026, 8, 1, tzinfo=UTC),
+        expected_record_count=2,
+        source_url=f"{CPSC_RECALL_API_URL}?format=json",
+        refresh_mode=CpscRefreshMode.FULL,
+        retrieval_attempts=1,
+    )
+    assert first_full.record_count == 2
+
+    daily = await import_cpsc_refresh_response(
+        database_url=postgres_url,
+        raw_response=json.dumps([records[0]]).encode(),
+        observed_at=datetime(2026, 8, 2, tzinfo=UTC),
+        expected_record_count=1,
+        source_url=f"{CPSC_RECALL_API_URL}?LastPublishDateStart=2026-07-26T00%3A00%3A00Z&format=json",
+        refresh_mode=CpscRefreshMode.DAILY,
+        retrieval_attempts=1,
+    )
+    assert daily.record_count == 2
+    async with source_database.connect() as connection:
+        current_count = await connection.scalar(
+            text("SELECT count(*) FROM cpsc_current_records")
+        )
+    assert current_count == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_live_refresh_uses_the_cross_process_advisory_lock(
+    postgres_url: str, source_database: AsyncEngine
+) -> None:
+    del source_database
+    requested_urls: list[str] = []
+
+    def recorded_fetch(url: str, timeout_seconds: float) -> bytes:
+        del timeout_seconds
+        requested_urls.append(url)
+        return FIXTURE.read_bytes()
+
+    result = await refresh_cpsc_source(
+        database_url=postgres_url,
+        refresh_mode=CpscRefreshMode.FULL,
+        observed_at=datetime(2026, 8, 1, tzinfo=UTC),
+        expected_record_count=1,
+        fetch=recorded_fetch,
+    )
+
+    assert result.record_count == 1
+    assert requested_urls == [f"{CPSC_RECALL_API_URL}?format=json"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_stale_completed_source_is_visibly_disabled_after_48_hours(
+    postgres_url: str, source_database: AsyncEngine
+) -> None:
+    del source_database
+    imported = import_fixture(postgres_url, "2026-08-01T12:00:00Z")
+    assert imported.returncode == 0, imported.stderr
+
+    status = await cpsc_source_status(
+        postgres_url, now=datetime(2026, 8, 3, 12, 0, 1, tzinfo=UTC)
+    )
+
+    assert status["source_status"] == {
+        "application_readiness": "disabled",
+        "freshness": "stale",
+        "integrity_pause_reason": None,
+        "last_failure_kind": None,
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_provenance_failure_activates_the_database_global_pause(
+    postgres_url: str, source_database: AsyncEngine
+) -> None:
+    record = json.loads(FIXTURE.read_text())
+    record[0]["URL"] = "https://example.invalid/not-a-cpsc-notice"
+
+    result = await import_cpsc_refresh_response(
+        database_url=postgres_url,
+        raw_response=json.dumps(record).encode(),
+        observed_at=datetime(2026, 8, 1, tzinfo=UTC),
+        expected_record_count=1,
+        source_url=f"{CPSC_RECALL_API_URL}?format=json",
+        refresh_mode=CpscRefreshMode.FULL,
+        retrieval_attempts=1,
+    )
+
+    assert isinstance(result, RejectedImport)
+    assert result.error_code == "official_notice_provenance_invalid"
+    async with source_database.connect() as connection:
+        paused = await connection.scalar(
+            text("SELECT is_paused FROM global_pause_state WHERE singleton = true")
+        )
+    assert paused is True
 
 
 @pytest.mark.asyncio

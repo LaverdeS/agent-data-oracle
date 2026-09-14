@@ -46,6 +46,7 @@ from agent_data_oracle.config import (
     validated_local_preview_harness,
     validated_public_origin,
 )
+from agent_data_oracle.cpsc_source import cpsc_source_status
 from agent_data_oracle.database import Database
 from agent_data_oracle.evidence_queue import (
     AuditDecision,
@@ -110,7 +111,8 @@ def create_app(
     local_preview_harness: bool | None = None,
     provider_disclosure: str | None = None,
 ) -> FastAPI:
-    database = Database(database_url or database_url_from_environment())
+    configured_database_url = database_url or database_url_from_environment()
+    database = Database(configured_database_url)
     configured_founder_emails = normalized_email_set(
         founder_emails
         if founder_emails is not None
@@ -984,10 +986,15 @@ def create_app(
             return RedirectResponse("/founder/totp", status_code=303)
         pending_audits = await evidence_queues.pending_audits()
         pause = await evidence_queues.global_pause()
+        source_status = await cpsc_source_status(configured_database_url)
         return response_with_csrf(
             request,
             "founder.html",
-            {"pending_audits": pending_audits, "pause": pause},
+            {
+                "pending_audits": pending_audits,
+                "pause": pause,
+                "source_status": source_status["source_status"],
+            },
         )
 
     async def totp_verified_founder(

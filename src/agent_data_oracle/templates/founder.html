@@ -27,6 +27,17 @@
   </section>
   {% endif %}
   <section class="card">
+    <h2>CPSC source status</h2>
+    <p>Application readiness: {{ source_status.application_readiness }}</p>
+    <p>Freshness: {{ source_status.freshness }}</p>
+    {% if source_status.last_failure_kind %}
+    <p>Latest failure category: {{ source_status.last_failure_kind }}</p>
+    {% endif %}
+    {% if source_status.integrity_pause_reason %}
+    <p>Integrity pause category: {{ source_status.integrity_pause_reason }}</p>
+    {% endif %}
+  </section>
+  <section class="card">
     <h2>Queues awaiting founder audit</h2>
     {% if pending_audits %}
     <ul>{% for audit in pending_audits %}<li><a href="/founder/audits/{{ audit.evaluation_id }}">Inspect queue from {{ audit.evaluated_at }}</a></li>{% endfor %}</ul>

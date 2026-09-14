@@ -4,7 +4,7 @@ import re
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -525,6 +525,22 @@ class EvidenceQueues:
             )
             if is_paused:
                 raise GloballyPausedError("new evidence queues are paused")
+
+            source_observed_at = await connection.scalar(
+                text(
+                    "SELECT runs.observed_at "
+                    "FROM cpsc_current_source_revision AS current "
+                    "JOIN cpsc_source_revisions AS revisions "
+                    "ON revisions.revision_id = current.revision_id "
+                    "JOIN cpsc_ingestion_runs AS runs "
+                    "ON runs.run_id = revisions.run_id "
+                    "WHERE current.singleton = true AND revisions.state = 'completed'"
+                )
+            )
+            if not isinstance(source_observed_at, datetime) or evaluated_at.astimezone(
+                UTC
+            ) - source_observed_at.astimezone(UTC) > timedelta(hours=48):
+                raise SourceUnavailableError("completed CPSC revision is stale")
 
             source_revision_id = await connection.scalar(
                 text(

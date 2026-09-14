@@ -12,10 +12,16 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from agent_data_oracle.config import database_url_from_environment
 from agent_data_oracle.cpsc_source import (
+    CPSC_RECALL_API_URL,
+    CpscRefreshMode,
     ImportResult,
     cpsc_source_status,
     import_cpsc_fixture,
+    import_cpsc_refresh_response,
     parse_observed_at,
+    parse_source_records,
+    refresh_cpsc_source,
+    retrieve_cpsc_response,
 )
 from agent_data_oracle.database import Database
 from agent_data_oracle.observability import configure_logging
@@ -101,6 +107,53 @@ def _cpsc_status_job(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _cpsc_refresh_job(arguments: argparse.Namespace) -> int:
+    configure_logging()
+    mode = CpscRefreshMode.FULL if arguments.mode == "weekly" else CpscRefreshMode.DAILY
+    observed_at = parse_observed_at(cast(str, arguments.observed_at))
+    expected_record_count = cast(int | None, arguments.expected_record_count)
+    fixture = cast(str | None, arguments.fixture)
+    if fixture is None:
+        result = _run_async(
+            refresh_cpsc_source(
+                database_url=_database_url(arguments),
+                refresh_mode=mode,
+                observed_at=observed_at,
+                expected_record_count=expected_record_count,
+            )
+        )
+    else:
+        result = _run_async(
+            import_cpsc_refresh_response(
+                database_url=_database_url(arguments),
+                raw_response=Path(fixture).read_bytes(),
+                observed_at=observed_at,
+                expected_record_count=expected_record_count,
+                source_url=f"{CPSC_RECALL_API_URL}?format=json",
+                refresh_mode=mode,
+                retrieval_attempts=0,
+            )
+        )
+    print(json.dumps(result.as_dict(), separators=(",", ":"), sort_keys=True))
+    return 0 if isinstance(result, ImportResult) else 1
+
+
+def _cpsc_live_smoke_job(arguments: argparse.Namespace) -> int:
+    configure_logging()
+    raw_response = _run_async(
+        retrieve_cpsc_response(f"{CPSC_RECALL_API_URL}?format=json")
+    )
+    records = parse_source_records(raw_response, expected_record_count=None)
+    print(
+        json.dumps(
+            {"record_count": len(records), "state": "validated"},
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
 def _add_database_url(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--database-url",
@@ -150,6 +203,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_database_url(cpsc_status)
     cpsc_status.set_defaults(handler=_cpsc_status_job)
+
+    cpsc_refresh = jobs.add_parser(
+        "cpsc-refresh",
+        help="retrieve or replay a bounded daily/weekly CPSC source refresh",
+    )
+    _add_database_url(cpsc_refresh)
+    cpsc_refresh.add_argument("--mode", choices=("daily", "weekly"), required=True)
+    cpsc_refresh.add_argument("--observed-at", required=True)
+    cpsc_refresh.add_argument("--expected-record-count", type=int)
+    cpsc_refresh.add_argument(
+        "--fixture",
+        help="replay recorded source bytes; ordinary tests must use this option",
+    )
+    cpsc_refresh.set_defaults(handler=_cpsc_refresh_job)
+
+    cpsc_smoke = jobs.add_parser(
+        "cpsc-live-smoke",
+        help="human-invoked live CPSC schema smoke; it never promotes a revision",
+    )
+    cpsc_smoke.set_defaults(handler=_cpsc_live_smoke_job)
 
     return parser
 

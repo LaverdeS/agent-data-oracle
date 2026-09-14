@@ -79,6 +79,7 @@ async def sign_in_and_declare(
         "/auth/verify", data={"token": token, "csrf_token": verify.cookies["ado_csrf"]}
     )
     declaration = await client.get("/declare")
+    assert declaration.status_code == 200, declaration.headers.get("location")
     await client.post(
         "/declare",
         data={
