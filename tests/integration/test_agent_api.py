@@ -433,6 +433,34 @@ async def test_agent_can_explicitly_refresh_a_queue_with_an_immutable_delta(
         replayed = await operator.post(
             f"/api/v1/queues/{original_id}/refresh", headers=headers
         )
+        changed_match_record = json.loads(json.dumps(changed_record))
+        changed_match_record[0]["ProductUPCs"] = [{"UPC": "000123456789"}]
+        await import_cpsc_refresh_response(
+            database_url=postgres_url,
+            raw_response=json.dumps(changed_match_record).encode(),
+            observed_at=datetime(2026, 9, 4, 9, 10, tzinfo=UTC),
+            expected_record_count=1,
+            source_url=f"{CPSC_RECALL_API_URL}?format=json",
+            refresh_mode=CpscRefreshMode.FULL,
+            retrieval_attempts=1,
+        )
+        changed = await operator.post(
+            f"/api/v1/queues/{original_id}/refresh", headers=headers
+        )
+        removed_record = json.loads(json.dumps(changed_match_record))
+        removed_record[0]["ProductUPCs"] = []
+        await import_cpsc_refresh_response(
+            database_url=postgres_url,
+            raw_response=json.dumps(removed_record).encode(),
+            observed_at=datetime(2026, 9, 4, 9, 20, tzinfo=UTC),
+            expected_record_count=1,
+            source_url=f"{CPSC_RECALL_API_URL}?format=json",
+            refresh_mode=CpscRefreshMode.FULL,
+            retrieval_attempts=1,
+        )
+        removed = await operator.post(
+            f"/api/v1/queues/{original_id}/refresh", headers=headers
+        )
         old_queue = await operator.get(f"/api/v1/queues/{original_id}", headers=headers)
 
     assert original.status_code == 201
@@ -476,6 +504,19 @@ async def test_agent_can_explicitly_refresh_a_queue_with_an_immutable_delta(
     assert refresh["delta"]["removed"] == []
     assert replayed.status_code == 200
     assert replayed.json()["evaluation_id"] == refreshed.json()["evaluation_id"]
+    assert changed.status_code == 201
+    assert changed.json()["evidence"]["refresh"]["delta"]["changed"][0][
+        "match_bases_changed"
+    ]
+    assert not changed.json()["evidence"]["refresh"]["delta"]["changed"][0][
+        "constraints_changed"
+    ]
+    assert removed.status_code == 201
+    assert removed.json()["evidence"]["outcome"] == "no_candidates"
+    assert (
+        removed.json()["evidence"]["refresh"]["delta"]["removed"][0]["recall_number"]
+        == "26651"
+    )
     assert old_queue.json()["evidence"]["outcome"] == "no_candidates"
     assert (
         old_queue.json()["evidence"]["refresh"]
