@@ -187,6 +187,27 @@ class EvaluationSummary:
 
 
 @dataclass(frozen=True)
+class RefreshResult:
+    evaluation: EvaluationSummary
+    created: bool
+
+
+@dataclass(frozen=True)
+class EvaluationVersion:
+    evaluation_id: UUID
+    source_revision_id: UUID
+    normalization_version: str
+    matcher_version: str
+
+
+@dataclass(frozen=True)
+class EvaluationRefresh:
+    predecessor: EvaluationVersion
+    successor: EvaluationVersion
+    delta: dict[str, object]
+
+
+@dataclass(frozen=True)
 class EvidenceQueueContract:
     evaluation_id: UUID
     source_revision_id: UUID
@@ -195,6 +216,7 @@ class EvidenceQueueContract:
     matcher_version: str
     inputs: tuple[SubmittedIdentifier, ...]
     candidates: tuple["EvidenceRow", ...] = ()
+    refresh: EvaluationRefresh | None = None
 
 
 class AuditDecision(StrEnum):
@@ -322,7 +344,22 @@ def serialize_evidence_contract(contract: EvidenceQueueContract) -> dict[str, ob
             }
             for row in contract.candidates
         ]
+    if contract.refresh is not None:
+        document["refresh"] = {
+            "delta": contract.refresh.delta,
+            "predecessor": _serialize_evaluation_version(contract.refresh.predecessor),
+            "successor": _serialize_evaluation_version(contract.refresh.successor),
+        }
     return document
+
+
+def _serialize_evaluation_version(version: EvaluationVersion) -> dict[str, str]:
+    return {
+        "evaluation_id": str(version.evaluation_id),
+        "matcher_version": version.matcher_version,
+        "normalization_version": version.normalization_version,
+        "source_revision_id": str(version.source_revision_id),
+    }
 
 
 def _affected_product_evidence(record: dict[str, Any]) -> dict[str, Any]:
@@ -482,6 +519,22 @@ class EvidenceQueues:
         idempotency_key: str,
         identifiers: tuple[SubmittedIdentifier, ...],
     ) -> EvaluationSummary:
+        result = await self._submit_evaluation(
+            operator_id=operator_id,
+            idempotency_key=idempotency_key,
+            identifiers=identifiers,
+        )
+        return result.evaluation
+
+    async def _submit_evaluation(
+        self,
+        *,
+        operator_id: UUID,
+        idempotency_key: str,
+        identifiers: tuple[SubmittedIdentifier, ...],
+        refresh_from_evaluation_id: UUID | None = None,
+        counts_toward_audit_gate: bool | None = None,
+    ) -> RefreshResult:
         if not 16 <= len(idempotency_key) <= 128:
             raise SubmissionError("A valid submission token is required.")
         canonical_submission_hash = _submission_hash(identifiers)
@@ -512,9 +565,12 @@ class EvidenceQueues:
             if previous is not None:
                 if previous["canonical_submission_hash"] != canonical_submission_hash:
                     raise IdempotencyConflictError("submission token already used")
-                return EvaluationSummary(
-                    evaluation_id=previous["evaluation_id"],
-                    evaluated_at=previous["evaluated_at"],
+                return RefreshResult(
+                    evaluation=EvaluationSummary(
+                        evaluation_id=previous["evaluation_id"],
+                        evaluated_at=previous["evaluated_at"],
+                    ),
+                    created=False,
                 )
 
             is_paused = await connection.scalar(
@@ -588,7 +644,12 @@ class EvidenceQueues:
                         candidate_rows.append(
                             (input_position, source_record, match_bases)
                         )
-            if self._counts_toward_audit_gate:
+            counts_toward_gate = (
+                self._counts_toward_audit_gate
+                if counts_toward_audit_gate is None
+                else counts_toward_audit_gate
+            )
+            if counts_toward_gate:
                 queue_number = await connection.scalar(
                     text(
                         "UPDATE audit_gate_state "
@@ -723,7 +784,253 @@ class EvidenceQueues:
                         "source_revision_completed_at": completed_at,
                     },
                 )
-        return EvaluationSummary(evaluation_id=evaluation_id, evaluated_at=evaluated_at)
+            if refresh_from_evaluation_id is not None:
+                previous_rows = (
+                    (
+                        await connection.execute(
+                            text(
+                                "SELECT input_position, recall_number, "
+                                "candidate_class, match_bases, constraints "
+                                "FROM evidence_rows WHERE evaluation_id = "
+                                ":evaluation_id"
+                            ),
+                            {"evaluation_id": refresh_from_evaluation_id},
+                        )
+                    )
+                    .mappings()
+                    .all()
+                )
+                prior_candidates = {
+                    (row["input_position"], row["recall_number"]): {
+                        "candidate_class": row["candidate_class"],
+                        "constraints": row["constraints"],
+                        "match_bases": row["match_bases"],
+                    }
+                    for row in previous_rows
+                }
+                successor_candidates = {
+                    (input_position, source_record["recall_number"]): {
+                        "candidate_class": min(
+                            (basis.candidate_class for basis in match_bases),
+                            key=lambda value: (
+                                0 if value is CandidateClass.EXACT_IDENTIFIER else 1
+                            ),
+                        ).value,
+                        "constraints": _source_constraints(
+                            source_record["normalized_record"]
+                        ),
+                        "match_bases": [
+                            {
+                                "candidate_class": basis.candidate_class.value,
+                                "identity_limit": basis.identity_limit,
+                                "matched_field": basis.matched_field,
+                                "matched_literal": basis.matched_literal,
+                            }
+                            for basis in match_bases
+                        ],
+                    }
+                    for input_position, source_record, match_bases in candidate_rows
+                }
+
+                def change_item(key: tuple[int, str]) -> dict[str, object]:
+                    return {"input_position": key[0], "recall_number": key[1]}
+
+                changed = []
+                for key in sorted(
+                    prior_candidates.keys() & successor_candidates.keys()
+                ):
+                    before, after = prior_candidates[key], successor_candidates[key]
+                    if before != after:
+                        changed.append(
+                            {
+                                **change_item(key),
+                                "constraints_changed": (
+                                    before["constraints"] != after["constraints"]
+                                ),
+                                "match_bases_changed": (
+                                    before["match_bases"] != after["match_bases"]
+                                ),
+                                "previous": before,
+                                "current": after,
+                            }
+                        )
+                delta = {
+                    "added": [
+                        {**change_item(key), "current": successor_candidates[key]}
+                        for key in sorted(
+                            successor_candidates.keys() - prior_candidates.keys()
+                        )
+                    ],
+                    "changed": changed,
+                    "removed": [
+                        {**change_item(key), "previous": prior_candidates[key]}
+                        for key in sorted(
+                            prior_candidates.keys() - successor_candidates.keys()
+                        )
+                    ],
+                }
+                await connection.execute(
+                    text(
+                        "INSERT INTO evidence_evaluation_refreshes "
+                        "(successor_evaluation_id, predecessor_evaluation_id, delta) "
+                        "VALUES (:successor_evaluation_id, "
+                        ":predecessor_evaluation_id, CAST(:delta AS jsonb))"
+                    ),
+                    {
+                        "delta": json.dumps(delta, sort_keys=True),
+                        "predecessor_evaluation_id": refresh_from_evaluation_id,
+                        "successor_evaluation_id": evaluation_id,
+                    },
+                )
+        return RefreshResult(
+            evaluation=EvaluationSummary(
+                evaluation_id=evaluation_id,
+                evaluated_at=evaluated_at,
+            ),
+            created=True,
+        )
+
+    async def refresh_evaluation(
+        self, *, operator_id: UUID, evaluation_id: UUID
+    ) -> RefreshResult | None:
+        """Re-evaluate exact retained inputs without rewriting their predecessor."""
+        async with self._database.connection() as connection:
+            predecessor = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT evaluations.evaluation_id, "
+                            "evaluations.evaluated_at, "
+                            "evaluations.source_revision_id, "
+                            "evaluations.normalization_version, "
+                            "evaluations.matcher_version "
+                            "FROM evidence_evaluations AS evaluations "
+                            "LEFT JOIN evaluation_releases AS releases ON "
+                            "releases.evaluation_id = evaluations.evaluation_id "
+                            "WHERE evaluations.evaluation_id = :evaluation_id "
+                            "AND evaluations.operator_id = :operator_id "
+                            "AND COALESCE(evaluations.released_at, "
+                            "releases.released_at) "
+                            "IS NOT NULL"
+                        ),
+                        {"evaluation_id": evaluation_id, "operator_id": operator_id},
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+            if predecessor is None:
+                return None
+            is_paused = await connection.scalar(
+                text("SELECT is_paused FROM global_pause_state WHERE singleton = true")
+            )
+            if is_paused:
+                raise GloballyPausedError("new evidence queues are paused")
+            current_revision_id = await connection.scalar(
+                text(
+                    "SELECT revision_id FROM cpsc_current_source_revision "
+                    "WHERE singleton = true"
+                )
+            )
+            source_observed_at = await connection.scalar(
+                text(
+                    "SELECT runs.observed_at "
+                    "FROM cpsc_current_source_revision AS current "
+                    "JOIN cpsc_source_revisions AS revisions ON "
+                    "revisions.revision_id = current.revision_id "
+                    "JOIN cpsc_ingestion_runs AS runs ON "
+                    "runs.run_id = revisions.run_id "
+                    "WHERE current.singleton = true "
+                    "AND revisions.state = 'completed'"
+                )
+            )
+            existing_successor = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT successor.evaluation_id, successor.evaluated_at, "
+                            "successor.source_revision_id, "
+                            "successor.normalization_version, "
+                            "successor.matcher_version "
+                            "FROM evidence_evaluation_refreshes AS refreshes "
+                            "JOIN evidence_evaluations AS successor ON "
+                            "successor.evaluation_id = "
+                            "refreshes.successor_evaluation_id "
+                            "WHERE refreshes.predecessor_evaluation_id = :evaluation_id"
+                        ),
+                        {"evaluation_id": evaluation_id},
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+            inputs = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT identifier_type, submitted_literal, "
+                            "normalized_value "
+                            "FROM evidence_evaluation_inputs WHERE evaluation_id = "
+                            ":evaluation_id ORDER BY row_position"
+                        ),
+                        {"evaluation_id": evaluation_id},
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        if not isinstance(current_revision_id, UUID):
+            raise SourceUnavailableError("completed CPSC revision unavailable")
+        if not isinstance(source_observed_at, datetime) or (
+            self._clock().astimezone(UTC) - source_observed_at.astimezone(UTC)
+            > timedelta(hours=48)
+        ):
+            raise SourceUnavailableError("completed CPSC revision is stale")
+        if (
+            existing_successor is not None
+            and existing_successor["source_revision_id"] == current_revision_id
+            and existing_successor["normalization_version"] == NORMALIZATION_VERSION
+            and existing_successor["matcher_version"] == MATCHER_VERSION
+        ):
+            return RefreshResult(
+                evaluation=EvaluationSummary(
+                    evaluation_id=existing_successor["evaluation_id"],
+                    evaluated_at=existing_successor["evaluated_at"],
+                ),
+                created=False,
+            )
+        if existing_successor is not None:
+            return await self.refresh_evaluation(
+                operator_id=operator_id,
+                evaluation_id=existing_successor["evaluation_id"],
+            )
+        if (
+            predecessor["source_revision_id"] == current_revision_id
+            and predecessor["normalization_version"] == NORMALIZATION_VERSION
+            and predecessor["matcher_version"] == MATCHER_VERSION
+        ):
+            return RefreshResult(
+                evaluation=EvaluationSummary(
+                    evaluation_id=evaluation_id,
+                    evaluated_at=predecessor["evaluated_at"],
+                ),
+                created=False,
+            )
+        identifiers = tuple(
+            SubmittedIdentifier(
+                identifier_type=IdentifierType(row["identifier_type"]),
+                submitted_literal=row["submitted_literal"],
+                normalized_value=row["normalized_value"],
+            )
+            for row in inputs
+        )
+        return await self._submit_evaluation(
+            operator_id=operator_id,
+            idempotency_key=f"refresh:{evaluation_id}:{current_revision_id}",
+            identifiers=identifiers,
+            refresh_from_evaluation_id=evaluation_id,
+            counts_toward_audit_gate=False,
+        )
 
     async def list_released(
         self, *, operator_id: UUID
@@ -799,6 +1106,41 @@ class EvidenceQueues:
                 .mappings()
                 .all()
             )
+            refresh_row = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT refreshes.delta, "
+                            "predecessor.evaluation_id AS predecessor_evaluation_id, "
+                            "predecessor.source_revision_id AS "
+                            "predecessor_source_revision_id, "
+                            "predecessor.normalization_version AS "
+                            "predecessor_normalization_version, "
+                            "predecessor.matcher_version AS "
+                            "predecessor_matcher_version, "
+                            "successor.evaluation_id AS successor_evaluation_id, "
+                            "successor.source_revision_id AS "
+                            "successor_source_revision_id, "
+                            "successor.normalization_version AS "
+                            "successor_normalization_version, "
+                            "successor.matcher_version AS successor_matcher_version "
+                            "FROM evidence_evaluation_refreshes AS refreshes "
+                            "JOIN evidence_evaluations AS predecessor ON "
+                            "predecessor.evaluation_id = "
+                            "refreshes.predecessor_evaluation_id "
+                            "JOIN evidence_evaluations AS successor ON "
+                            "successor.evaluation_id = "
+                            "refreshes.successor_evaluation_id "
+                            "WHERE refreshes.predecessor_evaluation_id = "
+                            ":evaluation_id "
+                            "OR refreshes.successor_evaluation_id = :evaluation_id"
+                        ),
+                        {"evaluation_id": evaluation_id},
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
         submitted_inputs = tuple(
             SubmittedIdentifier(
                 identifier_type=IdentifierType(row["identifier_type"]),
@@ -838,6 +1180,31 @@ class EvidenceQueues:
                     source_revision_completed_at=row["source_revision_completed_at"],
                 )
                 for row in candidate_rows
+            ),
+            refresh=(
+                None
+                if refresh_row is None
+                else EvaluationRefresh(
+                    predecessor=EvaluationVersion(
+                        evaluation_id=refresh_row["predecessor_evaluation_id"],
+                        source_revision_id=refresh_row[
+                            "predecessor_source_revision_id"
+                        ],
+                        normalization_version=refresh_row[
+                            "predecessor_normalization_version"
+                        ],
+                        matcher_version=refresh_row["predecessor_matcher_version"],
+                    ),
+                    successor=EvaluationVersion(
+                        evaluation_id=refresh_row["successor_evaluation_id"],
+                        source_revision_id=refresh_row["successor_source_revision_id"],
+                        normalization_version=refresh_row[
+                            "successor_normalization_version"
+                        ],
+                        matcher_version=refresh_row["successor_matcher_version"],
+                    ),
+                    delta=refresh_row["delta"],
+                )
             ),
         )
 

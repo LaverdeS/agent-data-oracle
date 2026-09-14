@@ -20,6 +20,11 @@ limited to 30 per key per rolling minute. Revocation is immediate.
 - `GET /api/v1/queues/{evaluation_id}/evidence` requires `evidence:read` and
   records a bounded source-evidence retrieval event. That event contains no
   submitted identifier or evidence text.
+- `POST /api/v1/queues/{evaluation_id}/refresh` requires `queues:refresh`.
+  It creates a new immutable successor only if a completed CPSC revision or
+  deterministic rule version is newer; otherwise it returns the released
+  predecessor. The response exposes predecessor/successor IDs and a
+  deterministic added/removed/changed delta. It never schedules monitoring.
 - `POST /api/v1/queues/{evaluation_id}/reviews` requires
   `reviews:report-agent`. Its JSON body is exactly
   `{"outcome":"reviewed_same_product|reviewed_different_product|need_more_identifiers|not_sure"}`.

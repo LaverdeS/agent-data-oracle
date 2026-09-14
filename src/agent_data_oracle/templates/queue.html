@@ -41,6 +41,25 @@
   </dl>
   {% if not audit %}
   <section class="card">
+    <h2>Refresh this evidence queue</h2>
+    <p>An explicit refresh preserves this immutable evaluation and checks the current completed CPSC revision. It does not monitor this queue or send alerts.</p>
+    <form method="post" action="/queues/{{ evaluation_id }}/refresh">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Refresh against the current source</button>
+    </form>
+    {% if evidence.refresh %}
+    <h3>Immutable refresh lineage</h3>
+    <dl>
+      <dt>Predecessor</dt><dd>{{ evidence.refresh.predecessor.evaluation_id }} · source {{ evidence.refresh.predecessor.source_revision_id }} · normalization {{ evidence.refresh.predecessor.normalization_version }} · matcher {{ evidence.refresh.predecessor.matcher_version }}</dd>
+      <dt>Successor</dt><dd>{{ evidence.refresh.successor.evaluation_id }} · source {{ evidence.refresh.successor.source_revision_id }} · normalization {{ evidence.refresh.successor.normalization_version }} · matcher {{ evidence.refresh.successor.matcher_version }}</dd>
+    </dl>
+    <h3>Refresh delta</h3>
+    <p>Added candidates</p><ul>{% for item in evidence.refresh.delta.added %}<li>Recall {{ item.recall_number }} for submitted row {{ item.input_position }}; match bases: {{ item.current.match_bases }}; constraints: {{ item.current.constraints }}</li>{% else %}<li>None</li>{% endfor %}</ul>
+    <p>Removed candidates</p><ul>{% for item in evidence.refresh.delta.removed %}<li>Recall {{ item.recall_number }} for submitted row {{ item.input_position }}; previous match bases: {{ item.previous.match_bases }}; previous constraints: {{ item.previous.constraints }}</li>{% else %}<li>None</li>{% endfor %}</ul>
+    <p>Changed candidates</p><ul>{% for item in evidence.refresh.delta.changed %}<li>Recall {{ item.recall_number }} for submitted row {{ item.input_position }}; match bases changed: {{ item.match_bases_changed }}; constraints changed: {{ item.constraints_changed }}; previous: {{ item.previous }}; current: {{ item.current }}</li>{% else %}<li>None</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+  <section class="card">
     <h2>Human review acknowledgement</h2>
     {% if reviews.current_human_acknowledgement %}
     <p>Current human acknowledgement: {{ reviews.current_human_acknowledgement.outcome.replace('_', ' ') }}</p>

@@ -2,6 +2,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import json
 import re
 import struct
 import subprocess
@@ -18,6 +19,11 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from agent_data_oracle.auth import LocalCaptureEmailProvider
+from agent_data_oracle.cpsc_source import (
+    CPSC_RECALL_API_URL,
+    CpscRefreshMode,
+    import_cpsc_refresh_response,
+)
 from agent_data_oracle.web import create_app
 from tests.preview import founder_preview_access
 
@@ -1094,3 +1100,77 @@ async def test_official_evidence_handoff_records_no_submitted_identifier(
         r"evidence/([^/]+)", handoff_path.group(1)
     ).group(1)
     assert not any("identifier" in column for column in columns)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_operator_can_explicitly_refresh_a_released_queue_from_the_browser(
+    postgres_url: str, evidence_database: AsyncEngine
+) -> None:
+    import_completed_fixture(postgres_url)
+    email_provider = LocalCaptureEmailProvider()
+    app = create_app(
+        database_url=postgres_url,
+        auth_secret=b"test-secret-that-is-long-enough",
+        email_provider=email_provider,
+        clock=lambda: datetime(2026, 9, 4, 10, 0, tzinfo=UTC),
+        public_origin="https://test",
+        secure_cookies=True,
+    )
+
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="https://test",
+            follow_redirects=False,
+        ) as operator,
+    ):
+        await sign_in_and_declare(operator, email_provider, "operator@example.com")
+        form = await operator.get("/queues/new")
+        created = await operator.post(
+            "/queues",
+            content=urlencode(
+                [
+                    ("identifier_type", "upc"),
+                    ("identifier_value", "000123456789"),
+                    ("authorization", "authorized"),
+                    ("idempotency_key", form.headers["x-idempotency-key"]),
+                    ("csrf_token", form.cookies["ado_csrf"]),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+        queue = await operator.get(created.headers["location"])
+        changed_record = json.loads(
+            Path("tests/fixtures/cpsc/recall-10887.json").read_text(encoding="utf-8")
+        )
+        changed_record[0]["ProductUPCs"] = ["000123456789"]
+        await import_cpsc_refresh_response(
+            database_url=postgres_url,
+            raw_response=json.dumps(changed_record).encode(),
+            observed_at=datetime(2026, 9, 4, 9, 0, tzinfo=UTC),
+            expected_record_count=1,
+            source_url=f"{CPSC_RECALL_API_URL}?format=json",
+            refresh_mode=CpscRefreshMode.FULL,
+            retrieval_attempts=1,
+        )
+        async with evidence_database.begin() as connection:
+            await connection.execute(
+                text(
+                    "UPDATE audit_gate_state SET committed_queue_count = 20 "
+                    "WHERE singleton = true"
+                )
+            )
+        refreshed = await operator.post(
+            f"{created.headers['location']}/refresh",
+            data={"csrf_token": queue.cookies["ado_csrf"]},
+        )
+        refreshed_queue = await operator.get(refreshed.headers["location"])
+
+    assert "Refresh against the current source" in queue.text
+    assert refreshed.status_code == 303
+    assert refreshed.headers["location"] != created.headers["location"]
+    assert "Immutable refresh lineage" in refreshed_queue.text
+    assert "Added candidates" in refreshed_queue.text
+    assert "ProductUPCs[0]" in refreshed_queue.text

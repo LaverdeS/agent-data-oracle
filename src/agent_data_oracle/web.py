@@ -785,6 +785,69 @@ def create_app(
             request, evaluation_id, "evidence:read", record_retrieval=True
         )
 
+    @app.post("/api/v1/queues/{evaluation_id}/refresh")
+    async def api_refresh_evidence_queue(
+        request: Request, evaluation_id: str
+    ) -> Response:
+        principal = await agent_for_scope(request, "queues:refresh")
+        if isinstance(principal, JSONResponse):
+            return principal
+        try:
+            parsed_evaluation_id = UUID(evaluation_id)
+        except ValueError:
+            return problem(
+                status_code=404, code="resource_not_found", title="Resource not found."
+            )
+        try:
+            refreshed = await evidence_queues.refresh_evaluation(
+                operator_id=principal.operator_id, evaluation_id=parsed_evaluation_id
+            )
+        except GloballyPausedError:
+            return problem(
+                status_code=503,
+                code="global_pause",
+                title="New evidence queues are paused.",
+            )
+        except SourceUnavailableError:
+            return problem(
+                status_code=503,
+                code="source_unavailable",
+                title="A completed CPSC source revision is unavailable.",
+            )
+        except SQLAlchemyError:
+            return problem(
+                status_code=503,
+                code="infrastructure_failure",
+                title="Evidence refresh is temporarily unavailable.",
+            )
+        if refreshed is None:
+            return problem(
+                status_code=404, code="resource_not_found", title="Resource not found."
+            )
+        queue = await evidence_queues.operator_queue(
+            operator_id=principal.operator_id,
+            evaluation_id=refreshed.evaluation.evaluation_id,
+        )
+        if queue is None or queue.contract is None:
+            return JSONResponse(
+                {
+                    "contract_version": "v1",
+                    "evaluation_id": str(refreshed.evaluation.evaluation_id),
+                    "status": "pending_founder_audit",
+                },
+                status_code=202,
+            )
+        reviews = await evidence_queues.review_history(
+            operator_id=principal.operator_id,
+            evaluation_id=refreshed.evaluation.evaluation_id,
+        )
+        return released_evidence_response(
+            evaluation_id=refreshed.evaluation.evaluation_id,
+            contract=queue.contract,
+            reviews=reviews,
+            status_code=201 if refreshed.created else 200,
+        )
+
     @app.post("/api/v1/queues/{evaluation_id}/reviews", status_code=201)
     async def api_report_agent_review(request: Request, evaluation_id: str) -> Response:
         principal = await agent_for_scope(request, "reviews:report-agent")
@@ -970,6 +1033,32 @@ def create_app(
         if acknowledgement is None:
             return HTMLResponse("Not found", status_code=404)
         return RedirectResponse(f"/queues/{parsed_evaluation_id}", status_code=303)
+
+    @app.post("/queues/{evaluation_id}/refresh")
+    async def refresh_evidence_queue(request: Request, evaluation_id: str) -> Response:
+        fields = await _form_fields(request)
+        if not csrf_is_valid(request, fields):
+            return HTMLResponse("Invalid request token", status_code=403)
+        operator = await authenticated_operator(request)
+        if operator is None or operator.operator_type is None:
+            return HTMLResponse("Not found", status_code=404)
+        try:
+            refreshed = await evidence_queues.refresh_evaluation(
+                operator_id=operator.operator_id, evaluation_id=UUID(evaluation_id)
+            )
+        except ValueError:
+            return HTMLResponse("Not found", status_code=404)
+        except GloballyPausedError:
+            return HTMLResponse("New evidence queues are paused.", status_code=503)
+        except (SourceUnavailableError, SQLAlchemyError):
+            return HTMLResponse(
+                "Evidence refresh is temporarily unavailable.", status_code=503
+            )
+        if refreshed is None:
+            return HTMLResponse("Not found", status_code=404)
+        return RedirectResponse(
+            f"/queues/{refreshed.evaluation.evaluation_id}", status_code=303
+        )
 
     @app.get("/founder")
     async def founder_controls(request: Request) -> Response:
