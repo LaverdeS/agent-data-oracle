@@ -1,0 +1,3 @@
+# Bound retention erases operator-linked evidence
+
+ADR-0001 preserves shared CPSC lineage and ordinarily immutable evidence evaluations so a released queue remains reproducible. When a valid operator deletion request is completed or the finite founder-test retention cutoff is reached, we instead erase that operator's linked evaluations, inputs, rows, acknowledgements, reviews, credentials, and sessions in one local cleanup transaction; shared CPSC source history remains untouched and the receipt retains no operator lookup key. This deliberate exception makes the deleted operator's historical queues no longer inspectable, because retaining them would preserve the submitted identifiers and account-linked evidence that the deletion boundary exists to remove.

@@ -4,8 +4,10 @@ import json
 import logging
 import sys
 from collections.abc import Callable, Coroutine, Sequence
+from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
+from uuid import UUID
 
 import uvicorn
 from sqlalchemy.exc import SQLAlchemyError
@@ -23,6 +25,7 @@ from agent_data_oracle.cpsc_source import (
     refresh_cpsc_source,
     retrieve_cpsc_response,
 )
+from agent_data_oracle.data_rights import OperatorDataRights
 from agent_data_oracle.database import Database
 from agent_data_oracle.observability import configure_logging
 from agent_data_oracle.schema import migrate_to_head
@@ -154,6 +157,60 @@ def _cpsc_live_smoke_job(arguments: argparse.Namespace) -> int:
     return 0
 
 
+async def _cleanup_operator_data(database_url: str, now: datetime) -> dict[str, int]:
+    database = Database(database_url)
+    try:
+        result = await OperatorDataRights(database).cleanup(now=now)
+        return {
+            "completed_deletions": result.completed_deletions,
+            "expired_operators": result.expired_operators,
+        }
+    finally:
+        await database.close()
+
+
+def _data_cleanup_job(arguments: argparse.Namespace) -> int:
+    configure_logging()
+    result = _run_async(
+        _cleanup_operator_data(
+            _database_url(arguments), parse_observed_at(cast(str, arguments.now))
+        )
+    )
+    print(json.dumps(result, separators=(",", ":"), sort_keys=True))
+    return 0
+
+
+async def _place_retention_hold(
+    database_url: str, operator_id: str, reason_category: str, recorded_at: datetime
+) -> bool:
+    database = Database(database_url)
+    try:
+        return await OperatorDataRights(database).place_incident_hold(
+            operator_id=UUID(operator_id),
+            reason_category=reason_category,
+            recorded_at=recorded_at,
+        )
+    finally:
+        await database.close()
+
+
+def _data_retention_hold_job(arguments: argparse.Namespace) -> int:
+    configure_logging()
+    try:
+        recorded = _run_async(
+            _place_retention_hold(
+                _database_url(arguments),
+                cast(str, arguments.operator_id),
+                cast(str, arguments.reason_category),
+                parse_observed_at(cast(str, arguments.recorded_at)),
+            )
+        )
+    except ValueError:
+        return 2
+    print(json.dumps({"recorded": recorded}, separators=(",", ":"), sort_keys=True))
+    return 0 if recorded else 1
+
+
 def _add_database_url(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--database-url",
@@ -223,6 +280,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="human-invoked live CPSC schema smoke; it never promotes a revision",
     )
     cpsc_smoke.set_defaults(handler=_cpsc_live_smoke_job)
+    data_cleanup = jobs.add_parser(
+        "data-cleanup",
+        help="complete deletion work and expire bounded local founder-test data",
+    )
+    _add_database_url(data_cleanup)
+    data_cleanup.add_argument(
+        "--now", required=True, help="UTC ISO-8601 cleanup boundary"
+    )
+    data_cleanup.set_defaults(handler=_data_cleanup_job)
+
+    retention_hold = jobs.add_parser(
+        "data-retention-hold",
+        help="record a documented incident hold for local founder-test data",
+    )
+    _add_database_url(retention_hold)
+    retention_hold.add_argument("--operator-id", required=True)
+    retention_hold.add_argument("--reason-category", required=True)
+    retention_hold.add_argument("--recorded-at", required=True)
+    retention_hold.set_defaults(handler=_data_retention_hold_job)
 
     return parser
 

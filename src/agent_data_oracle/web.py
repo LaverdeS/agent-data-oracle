@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlsplit
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -47,6 +48,7 @@ from agent_data_oracle.config import (
     validated_public_origin,
 )
 from agent_data_oracle.cpsc_source import cpsc_source_status
+from agent_data_oracle.data_rights import OperatorDataRights
 from agent_data_oracle.database import Database
 from agent_data_oracle.evidence_queue import (
     AuditDecision,
@@ -164,6 +166,7 @@ def create_app(
     agent_access = AgentAccess(
         database, clock=clock, preview_access=configured_preview_access
     )
+    data_rights = OperatorDataRights(database, clock=clock)
     use_secure_cookies = (
         secure_cookies
         if secure_cookies is not None
@@ -205,6 +208,7 @@ def create_app(
     app.state.human_access = human_access
     app.state.evidence_queues = evidence_queues
     app.state.agent_access = agent_access
+    app.state.data_rights = data_rights
 
     def has_manual_proxy_marker(request: Request) -> bool:
         return (
@@ -255,6 +259,18 @@ def create_app(
         return await human_access.authenticated_operator(
             request.cookies.get("ado_session")
         )
+
+    async def reauthenticated_declared_operator(
+        request: Request,
+    ) -> AuthenticatedOperator | None:
+        operator = await authenticated_operator(request)
+        if (
+            operator is None
+            or operator.operator_type is None
+            or not human_access.reauthentication_is_current(operator)
+        ):
+            return None
+        return operator
 
     def csrf_is_valid(request: Request, fields: Mapping[str, str]) -> bool:
         return human_access.csrf_token_is_valid(
@@ -595,12 +611,36 @@ def create_app(
             status_code=status_code,
         )
 
+    @app.get("/account/data/export")
+    async def export_operator_data(request: Request) -> Response:
+        operator = await reauthenticated_declared_operator(request)
+        if operator is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        exported = await data_rights.export_operator(operator_id=operator.operator_id)
+        if exported is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        return JSONResponse(jsonable_encoder(exported))
+
+    @app.post("/account/data/deletion-requests")
+    async def request_operator_data_deletion(request: Request) -> Response:
+        fields = await _form_fields(request)
+        if not csrf_is_valid(request, fields):
+            return HTMLResponse("Invalid request token", status_code=403)
+        operator = await reauthenticated_declared_operator(request)
+        if operator is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        deletion = await data_rights.request_deletion(operator_id=operator.operator_id)
+        if deletion is None:
+            return RedirectResponse("/sign-in", status_code=303)
+        return JSONResponse(
+            jsonable_encoder({"due_at": deletion.due_at, "status": deletion.status}),
+            status_code=202,
+        )
+
     @app.get("/agent-keys", response_class=HTMLResponse)
     async def agent_keys(request: Request) -> Response:
-        operator = await authenticated_operator(request)
-        if operator is None or operator.operator_type is None:
-            return RedirectResponse("/sign-in", status_code=303)
-        if not human_access.reauthentication_is_current(operator):
+        operator = await reauthenticated_declared_operator(request)
+        if operator is None:
             return RedirectResponse("/sign-in", status_code=303)
         return await agent_keys_page(request)
 
