@@ -50,7 +50,8 @@ class OperatorDataRights:
                 (
                     await connection.execute(
                         text(
-                            "SELECT email_normalized, operator_type, sells_into_us "
+                            "SELECT email_normalized, operator_type, sells_into_us, "
+                            "declaration_recorded_at, created_at "
                             "FROM operators WHERE operator_id = :operator_id"
                         ),
                         {"operator_id": operator_id},
@@ -115,6 +116,36 @@ class OperatorDataRights:
                 .mappings()
                 .all()
             )
+            released_rows = (
+                (
+                    await connection.execute(
+                        text(
+                            "SELECT rows.evaluation_id, rows.evidence_row_id, "
+                            "rows.input_position, rows.candidate_class, "
+                            "rows.match_bases, rows.affected_product_evidence, "
+                            "rows.constraints, rows.recall_number, rows.official_url, "
+                            "rows.recall_date_literal, rows.last_publish_date_literal, "
+                            "rows.source_observed_at, "
+                            "rows.source_revision_completed_at "
+                            "FROM evidence_rows AS rows "
+                            "JOIN evidence_evaluations AS evaluations ON "
+                            "evaluations.evaluation_id = rows.evaluation_id "
+                            "LEFT JOIN evaluation_releases AS releases ON "
+                            "releases.evaluation_id = evaluations.evaluation_id "
+                            "WHERE evaluations.operator_id = :operator_id AND "
+                            "COALESCE(evaluations.released_at, releases.released_at) "
+                            "IS NOT NULL "
+                            "ORDER BY rows.evaluation_id, CASE rows.candidate_class "
+                            "WHEN 'exact_identifier_candidate' THEN 0 ELSE 1 END, "
+                            "rows.last_publish_date_literal DESC NULLS LAST, "
+                            "rows.recall_number, rows.evidence_row_id"
+                        ),
+                        {"operator_id": operator_id},
+                    )
+                )
+                .mappings()
+                .all()
+            )
             acknowledgements = (
                 (
                     await connection.execute(
@@ -163,11 +194,18 @@ class OperatorDataRights:
             inputs_by_evaluation.setdefault(item["evaluation_id"], []).append(
                 dict(item)
             )
+        rows_by_evaluation: dict[UUID, list[dict[str, Any]]] = {}
+        for item in released_rows:
+            row = dict(item)
+            evaluation_id = row.pop("evaluation_id")
+            rows_by_evaluation.setdefault(evaluation_id, []).append(row)
         return {
             "account": {
                 "email": account["email_normalized"],
                 "operator_type": account["operator_type"],
                 "sells_into_us": account["sells_into_us"],
+                "declaration_recorded_at": account["declaration_recorded_at"],
+                "created_at": account["created_at"],
             },
             "submissions": [
                 {
@@ -176,7 +214,15 @@ class OperatorDataRights:
                 }
                 for item in submissions
             ],
-            "released_evaluations": [dict(item) for item in released],
+            "released_evaluations": [
+                {
+                    **dict(item),
+                    "evidence_rows": rows_by_evaluation.get(
+                        item["evaluation_id"], []
+                    ),
+                }
+                for item in released
+            ],
             "acknowledgements": [dict(item) for item in acknowledgements],
             "review_reports": [dict(item) for item in reports],
             "delegated_keys": [dict(item) for item in keys],

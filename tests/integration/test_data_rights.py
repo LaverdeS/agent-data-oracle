@@ -89,6 +89,9 @@ async def test_operator_can_export_then_request_deletion_with_immediate_revocati
         source_count = await connection.scalar(
             text("SELECT count(*) FROM cpsc_recalls")
         )
+        receipt_count_before = await connection.scalar(
+            text("SELECT count(*) FROM deletion_completion_receipts")
+        )
         work = (
             await connection.execute(
                 text(
@@ -107,8 +110,11 @@ async def test_operator_can_export_then_request_deletion_with_immediate_revocati
         "email": "operator@example.com",
         "operator_type": "business_operator",
         "sells_into_us": True,
+        "declaration_recorded_at": "2026-09-04T10:00:00+00:00",
+        "created_at": "2026-09-04T10:00:00+00:00",
     }
     assert exported_body["submissions"][0]["evaluation_id"] == queue_id
+    assert exported_body["released_evaluations"][0]["evidence_rows"] == []
     assert exported_body["delegated_keys"][0]["secret_prefix"]
     assert "secret_hash" not in json.dumps(exported_body)
     assert deletion.status_code == 202
@@ -126,6 +132,52 @@ async def test_operator_can_export_then_request_deletion_with_immediate_revocati
         "submissions",
     ]
     assert source_count == 1
+
+    completion = await app.state.data_rights.cleanup(
+        now=datetime(2026, 9, 4, 10, 0, tzinfo=UTC)
+    )
+    async with evidence_database.connect() as connection:
+        remaining_operators = await connection.scalar(
+            text("SELECT count(*) FROM operators")
+        )
+        remaining_evaluations = await connection.scalar(
+            text("SELECT count(*) FROM evidence_evaluations")
+        )
+        preserved_sources = await connection.scalar(
+            text("SELECT count(*) FROM cpsc_recalls")
+        )
+        receipt_count = await connection.scalar(
+            text("SELECT count(*) FROM deletion_completion_receipts")
+        )
+        receipts = (
+            await connection.execute(
+                text(
+                    "SELECT categories, outcome "
+                    "FROM deletion_completion_receipts"
+                )
+            )
+        ).all()
+
+    assert completion.completed_deletions == 1
+    assert remaining_operators == 0
+    assert receipt_count == receipt_count_before + 1
+    assert remaining_evaluations == 0
+    assert preserved_sources == 1
+    assert all(
+        receipt
+        == (
+            [
+                "account_and_declaration",
+                "acknowledgements",
+                "delegated_key_metadata",
+                "released_evaluations",
+                "review_reports",
+                "submissions",
+            ],
+            "completed",
+        )
+        for receipt in receipts
+    )
 
 
 @pytest.mark.asyncio

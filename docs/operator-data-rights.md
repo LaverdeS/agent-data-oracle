@@ -4,7 +4,7 @@ Operator data is kept separately from the shared, immutable CPSC source history.
 A currently re-authenticated declared operator can download portable JSON at
 `/account/data/export` and create deletion work at
 `/account/data/deletion-requests`. Exports include the account declaration,
-submitted inputs, released-evaluation metadata, acknowledgement history,
+submitted inputs, released-evaluation metadata and evidence rows, acknowledgement history,
 agent-review reports, and delegated-key metadata. They deliberately omit key
 secrets and secret hashes, founder audit notes, and every other operator's data.
 
