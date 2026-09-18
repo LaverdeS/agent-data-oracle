@@ -151,10 +151,7 @@ async def test_operator_can_export_then_request_deletion_with_immediate_revocati
         )
         receipts = (
             await connection.execute(
-                text(
-                    "SELECT categories, outcome "
-                    "FROM deletion_completion_receipts"
-                )
+                text("SELECT categories, outcome FROM deletion_completion_receipts")
             )
         ).all()
 

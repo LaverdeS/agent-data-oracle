@@ -217,9 +217,7 @@ class OperatorDataRights:
             "released_evaluations": [
                 {
                     **dict(item),
-                    "evidence_rows": rows_by_evaluation.get(
-                        item["evaluation_id"], []
-                    ),
+                    "evidence_rows": rows_by_evaluation.get(item["evaluation_id"], []),
                 }
                 for item in released
             ],
